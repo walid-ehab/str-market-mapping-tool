@@ -12,6 +12,10 @@ function average(values: number[]): number | null {
   return sum / values.length
 }
 
+function shareOf(part: number, total: number): number | null {
+  return total > 0 ? part / total : null
+}
+
 export function AnalyticsPanel() {
   const cluster = useActiveCluster()
   const listings = useClusterListings(cluster)
@@ -25,8 +29,9 @@ export function AnalyticsPanel() {
 
   const avgRevenue = average(listings.map((l) => l.revenuePotentialLtm).filter((v): v is number => v !== null))
   const avgOccupancy = average(listings.map((l) => l.occupancyRateLtm).filter((v): v is number => v !== null))
-  const pctAboveThreshold =
-    allListings.length > 0 ? allListings.filter((l) => l.revenueTierId !== 'below').length / allListings.length : null
+  const aboveThresholdCount = allListings.filter((l) => l.revenueTierId !== 'below').length
+  const pctAboveThreshold = shareOf(aboveThresholdCount, allListings.length)
+  const pctShownOfTotal = shareOf(listings.length, allListings.length)
 
   return (
     <div className="analytics-panel">
@@ -38,9 +43,16 @@ export function AnalyticsPanel() {
       <ConfidencePicker value={cluster.confidence} onChange={(confidence) => setClusterConfidence(cluster.id, confidence)} />
 
       <div className="analytics-panel__stats">
+        <div className="stat-tile" title="Every listing in this polygon, regardless of active filters or legend toggles">
+          <span className="stat-tile__label">Total Listings</span>
+          <span className="stat-tile__value">{allListings.length.toLocaleString()}</span>
+        </div>
         <div className="stat-tile">
           <span className="stat-tile__label">Listings</span>
-          <span className="stat-tile__value">{listings.length.toLocaleString()}</span>
+          <span className="stat-tile__value">
+            {listings.length.toLocaleString()}
+            {pctShownOfTotal !== null && <span className="stat-tile__suffix"> ({formatPercent(pctShownOfTotal)})</span>}
+          </span>
         </div>
         <div className="stat-tile">
           <span className="stat-tile__label">Avg Revenue</span>
@@ -52,7 +64,10 @@ export function AnalyticsPanel() {
         </div>
         <div className="stat-tile" title="Of all listings in this polygon, regardless of active filters">
           <span className="stat-tile__label">Above {formatK(revenueThreshold)}</span>
-          <span className="stat-tile__value">{formatPercent(pctAboveThreshold)}</span>
+          <span className="stat-tile__value">
+            {aboveThresholdCount.toLocaleString()}
+            {pctAboveThreshold !== null && <span className="stat-tile__suffix"> ({formatPercent(pctAboveThreshold)})</span>}
+          </span>
         </div>
       </div>
 
