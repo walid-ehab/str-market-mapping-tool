@@ -483,13 +483,16 @@ button {
   padding: 8px;
 }
 
+/* Stacked below MapLibre's own top-left control group (the polygon draw + trash buttons,
+   ~33px tall) instead of beside it, so the two never overlap regardless of viewport width. */
 .map-overlay--top-left {
-  top: 12px;
-  left: 52px;
+  top: 45px;
+  left: 12px;
 }
 
+/* Stacked below the top-right NavigationControl (zoom in/out, ~68px tall incl. margin). */
 .map-overlay--top-right {
-  top: 12px;
+  top: 80px;
   right: 12px;
   max-width: 220px;
 }
