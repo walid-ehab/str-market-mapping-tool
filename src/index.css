@@ -312,15 +312,19 @@ button {
 .project-switcher {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 16px;
+  gap: 8px;
 }
 
 .project-switcher__row {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.project-switcher__label {
+  font-size: 13px;
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .project-switcher__name {
