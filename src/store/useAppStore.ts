@@ -18,6 +18,8 @@ interface AppState {
 
   revenueThreshold: number
   colorModeId: string
+  /** Legend entries hidden from the map, per color mode id, so switching modes doesn't lose the other mode's toggles. */
+  hiddenLegendEntries: Record<string, string[]>
   filterValues: Record<string, unknown>
   mapStyleId: string
 
@@ -33,6 +35,7 @@ interface AppState {
 
   setRevenueThreshold: (threshold: number) => void
   setColorModeId: (id: string) => void
+  toggleLegendEntry: (colorModeId: string, entryId: string) => void
   setFilterValue: (id: string, value: unknown) => void
   resetFilters: () => void
   setMapStyleId: (id: string) => void
@@ -56,6 +59,7 @@ export const useAppStore = create<AppState>((set) => ({
 
   revenueThreshold: DEFAULT_REVENUE_THRESHOLD,
   colorModeId: defaultColorModeId,
+  hiddenLegendEntries: {},
   filterValues: defaultFilterValues(),
   mapStyleId: DEFAULT_MAP_STYLE_ID,
 
@@ -90,6 +94,12 @@ export const useAppStore = create<AppState>((set) => ({
 
   setRevenueThreshold: (threshold) => set({ revenueThreshold: threshold }),
   setColorModeId: (id) => set({ colorModeId: id }),
+  toggleLegendEntry: (colorModeId, entryId) =>
+    set((state) => {
+      const current = state.hiddenLegendEntries[colorModeId] ?? []
+      const next = current.includes(entryId) ? current.filter((id) => id !== entryId) : [...current, entryId]
+      return { hiddenLegendEntries: { ...state.hiddenLegendEntries, [colorModeId]: next } }
+    }),
   setFilterValue: (id, value) => set((state) => ({ filterValues: { ...state.filterValues, [id]: value } })),
   resetFilters: () => set({ filterValues: defaultFilterValues() }),
   setMapStyleId: (id) => set({ mapStyleId: id }),
@@ -118,6 +128,7 @@ export const useAppStore = create<AppState>((set) => ({
       clusters: persisted.clusters,
       revenueThreshold: persisted.revenueThreshold,
       colorModeId: persisted.colorModeId,
+      hiddenLegendEntries: persisted.hiddenLegendEntries ?? {},
       filterValues: persisted.filterValues,
       mapStyleId: persisted.mapStyleId,
     }),

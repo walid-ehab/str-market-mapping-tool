@@ -37,6 +37,7 @@ export function usePersistence(): void {
   const clusters = useAppStore((s) => s.clusters)
   const revenueThreshold = useAppStore((s) => s.revenueThreshold)
   const colorModeId = useAppStore((s) => s.colorModeId)
+  const hiddenLegendEntries = useAppStore((s) => s.hiddenLegendEntries)
   const filterValues = useAppStore((s) => s.filterValues)
   const mapStyleId = useAppStore((s) => s.mapStyleId)
 
@@ -55,6 +56,7 @@ export function usePersistence(): void {
         clusters,
         revenueThreshold,
         colorModeId,
+        hiddenLegendEntries,
         filterValues,
         mapStyleId,
       })
@@ -69,6 +71,7 @@ export function usePersistence(): void {
     clusters,
     revenueThreshold,
     colorModeId,
+    hiddenLegendEntries,
     filterValues,
     mapStyleId,
   ])

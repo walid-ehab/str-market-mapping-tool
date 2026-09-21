@@ -5,6 +5,7 @@ export const revenueTierColorMode: ColorMode = {
   id: 'revenue-tier',
   label: 'Revenue Tier',
   getColor: (listing) => REVENUE_TIER_COLORS[listing.revenueTierId],
+  getEntryId: (listing) => listing.revenueTierId,
   getLegend: (listings): LegendEntry[] => {
     const labelByTier = new Map<string, string>()
     for (const listing of listings) {

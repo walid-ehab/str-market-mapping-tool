@@ -90,26 +90,26 @@ export function MapView({ children }: MapViewProps) {
       setMapInstance(map)
     })
 
-    const popup = new Popup({ closeButton: false, closeOnClick: false, maxWidth: '280px' })
+    // Click-to-pin instead of hover: a hover popup disappears the instant the cursor leaves
+    // the (tiny) circle, which made the "View Listing" link inside it unreachable. Clicking
+    // opens a popup that stays open — with its own close button, and closeOnClick so
+    // clicking elsewhere on the map (or another listing) dismisses/replaces it — the
+    // standard pattern for popups with interactive content.
+    const popup = new Popup({ closeButton: true, closeOnClick: true, maxWidth: '280px' })
     popupRef.current = popup
 
-    map.on('mouseenter', LISTINGS_LAYER_ID, (e: MapLayerMouseEvent) => {
+    map.on('mouseenter', LISTINGS_LAYER_ID, () => {
       map.getCanvas().style.cursor = 'pointer'
+    })
+    map.on('mouseleave', LISTINGS_LAYER_ID, () => {
+      map.getCanvas().style.cursor = ''
+    })
+    map.on('click', LISTINGS_LAYER_ID, (e: MapLayerMouseEvent) => {
       const feature = e.features?.[0]
       if (!feature) return
       const props = feature.properties as unknown as ListingFeatureProperties
       const coordinates = (feature.geometry as Point).coordinates.slice() as [number, number]
       popup.setLngLat(coordinates).setHTML(buildPopupHtml(props)).addTo(map)
-    })
-    map.on('mousemove', LISTINGS_LAYER_ID, (e: MapLayerMouseEvent) => {
-      const feature = e.features?.[0]
-      if (!feature) return
-      const coordinates = (feature.geometry as Point).coordinates.slice() as [number, number]
-      popup.setLngLat(coordinates)
-    })
-    map.on('mouseleave', LISTINGS_LAYER_ID, () => {
-      map.getCanvas().style.cursor = ''
-      popup.remove()
     })
 
     mapRef.current = map
@@ -129,8 +129,13 @@ export function MapView({ children }: MapViewProps) {
     const map = mapRef.current
     if (!map) return
     if (!map.isStyleLoaded()) return
-    map.setStyle(getMapStyle(mapStyleId).style)
+    // Register the listener BEFORE calling setStyle. An inline style object (e.g. the
+    // satellite style, which needs no network fetch) can finish applying synchronously —
+    // registering `.once()` afterward can miss that emit entirely, leaving the source/layer
+    // never re-added and the map silently pointless (this was the satellite-only bug: every
+    // other style is a URL, which is always async, so the race never showed up there).
     map.once('style.load', () => ensureListingsLayer(map, latestDataRef.current))
+    map.setStyle(getMapStyle(mapStyleId).style)
   }, [mapStyleId])
 
   // Keep the point layer's data in sync with the active filters + color mode.

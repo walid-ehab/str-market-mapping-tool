@@ -1,12 +1,17 @@
 import { colorModes } from '@/features/color-modes/registry'
-import { useActiveColorMode, useFilteredListings } from '@/store/selectors'
+import { useActiveColorMode, useEnrichedListings } from '@/store/selectors'
 import { useAppStore } from '@/store/useAppStore'
 
 export function Legend() {
   const colorModeId = useAppStore((s) => s.colorModeId)
   const setColorModeId = useAppStore((s) => s.setColorModeId)
+  const hiddenEntries = useAppStore((s) => s.hiddenLegendEntries[colorModeId]) ?? []
+  const toggleLegendEntry = useAppStore((s) => s.toggleLegendEntry)
   const activeColorMode = useActiveColorMode()
-  const listings = useFilteredListings()
+  // The legend itself should list every entry present in the unfiltered dataset — otherwise
+  // hiding the last visible entry of a tier would make that tier disappear from the legend,
+  // and there'd be no way to click it back on.
+  const listings = useEnrichedListings()
   const legend = activeColorMode.getLegend(listings)
 
   return (
@@ -24,12 +29,21 @@ export function Legend() {
         ))}
       </div>
       <div className="legend__entries">
-        {legend.map((entry) => (
-          <div key={entry.id} className="legend__entry">
-            <span className="legend__swatch" style={{ backgroundColor: entry.color }} />
-            <span>{entry.label}</span>
-          </div>
-        ))}
+        {legend.map((entry) => {
+          const isHidden = hiddenEntries.includes(entry.id)
+          return (
+            <button
+              key={entry.id}
+              type="button"
+              className={`legend__entry${isHidden ? ' legend__entry--hidden' : ''}`}
+              title={isHidden ? `Show ${entry.label}` : `Hide ${entry.label}`}
+              onClick={() => toggleLegendEntry(colorModeId, entry.id)}
+            >
+              <span className="legend__swatch" style={{ backgroundColor: entry.color }} />
+              <span>{entry.label}</span>
+            </button>
+          )
+        })}
       </div>
     </div>
   )

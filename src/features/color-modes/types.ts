@@ -15,4 +15,6 @@ export interface ColorMode {
   label: string
   getColor: (listing: EnrichedListing) => string
   getLegend: (listings: EnrichedListing[]) => LegendEntry[]
+  /** Which legend entry a listing belongs to — lets a hidden legend entry filter the map. */
+  getEntryId: (listing: EnrichedListing) => string
 }
