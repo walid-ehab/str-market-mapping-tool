@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useMapInstance } from '@/features/map/MapContext'
+import { ringBounds } from '@/lib/geo'
 import { useAppStore } from '@/store/useAppStore'
 import type { Cluster } from '@/types/cluster'
 
@@ -7,6 +9,7 @@ function ClusterRow({ cluster }: { cluster: Cluster }) {
   const setActiveClusterId = useAppStore((s) => s.setActiveClusterId)
   const renameCluster = useAppStore((s) => s.renameCluster)
   const removeCluster = useAppStore((s) => s.removeCluster)
+  const map = useMapInstance()
   const [isEditing, setIsEditing] = useState(false)
   const [draftName, setDraftName] = useState(cluster.name)
 
@@ -18,8 +21,16 @@ function ClusterRow({ cluster }: { cluster: Cluster }) {
     setIsEditing(false)
   }
 
+  const selectAndFlyTo = () => {
+    setActiveClusterId(cluster.id)
+    const bounds = ringBounds(cluster.ring)
+    if (map && bounds) {
+      map.fitBounds([bounds.sw, bounds.ne], { padding: 80, maxZoom: 15, duration: 800 })
+    }
+  }
+
   return (
-    <div className={`cluster-row${isActive ? ' cluster-row--active' : ''}`} onClick={() => setActiveClusterId(cluster.id)}>
+    <div className={`cluster-row${isActive ? ' cluster-row--active' : ''}`} onClick={selectAndFlyTo}>
       <span className="cluster-row__swatch" style={{ backgroundColor: cluster.color }} />
       {isEditing ? (
         <input

@@ -5,6 +5,7 @@ import {
   MapLibreMap,
   NavigationControl,
   Popup,
+  ScaleControl,
 } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './setupMapWorker'
@@ -56,9 +57,11 @@ function ensureListingsLayer(map: MapLibreMap, data: FeatureCollection<Point, Li
 
 interface MapViewProps {
   children?: ReactNode
+  /** Reports the live map instance upward so components outside MapView's own children (e.g. the sidebar's cluster list) can use it too — see MapContext. */
+  onMapReady?: (map: MapLibreMap | null) => void
 }
 
-export function MapView({ children }: MapViewProps) {
+export function MapView({ children, onMapReady }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const popupRef = useRef<Popup | null>(null)
@@ -84,6 +87,7 @@ export function MapView({ children }: MapViewProps) {
       zoom: DEFAULT_ZOOM,
     })
     map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
+    map.addControl(new ScaleControl({ maxWidth: 120, unit: 'imperial' }), 'bottom-left')
 
     map.on('load', () => {
       ensureListingsLayer(map, latestDataRef.current)
@@ -146,6 +150,10 @@ export function MapView({ children }: MapViewProps) {
     if (!source) return
     source.setData(latestDataRef.current)
   }, [mapInstance, filteredListings, colorMode])
+
+  useEffect(() => {
+    onMapReady?.(mapInstance)
+  }, [mapInstance, onMapReady])
 
   // Fit to the dataset's bounds once, right after a new file is loaded.
   useEffect(() => {
