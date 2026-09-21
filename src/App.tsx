@@ -11,6 +11,7 @@ import { MapView } from '@/features/map/MapView'
 import { StyleSwitcher } from '@/features/map/StyleSwitcher'
 import { usePersistence } from '@/features/persistence/usePersistence'
 import { PolygonDraw } from '@/features/polygon-draw/PolygonDraw'
+import { ProjectSwitcher } from '@/features/projects/ProjectSwitcher'
 import { GenerateReportButton } from '@/features/report/GenerateReportButton'
 import { ThresholdControl } from '@/features/revenue-tiering/ThresholdControl'
 import { useAppStore } from '@/store/useAppStore'
@@ -31,6 +32,8 @@ function App() {
             <h1>STR Market Mapping</h1>
             <p>Upload a listings CSV to plot it on the map.</p>
           </div>
+
+          <ProjectSwitcher />
 
           <UploadButton />
 

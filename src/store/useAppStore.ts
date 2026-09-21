@@ -2,7 +2,7 @@ import type { Position } from 'geojson'
 import { create } from 'zustand'
 import { defaultColorModeId } from '@/features/color-modes/registry'
 import { defaultFilterValues } from '@/features/filters/registry'
-import type { PersistedState } from '@/features/persistence/db'
+import type { ProjectRecord, ProjectSummary } from '@/features/persistence/db'
 import { CLUSTER_CONFIDENCE_COLORS, DEFAULT_CLUSTER_CONFIDENCE, type ClusterConfidence } from '@/lib/clusterConfidence'
 import type { Cluster } from '@/types/cluster'
 import type { Listing } from '@/types/listing'
@@ -10,12 +10,31 @@ import type { Listing } from '@/types/listing'
 export const DEFAULT_REVENUE_THRESHOLD = 90000
 export const DEFAULT_MAP_STYLE_ID = 'carto-positron'
 
+/** Backfills confidence for clusters persisted before that field existed. */
+function withConfidence(clusters: Cluster[]): Cluster[] {
+  return clusters.map((c) =>
+    c.confidence ? c : { ...c, confidence: DEFAULT_CLUSTER_CONFIDENCE, color: CLUSTER_CONFIDENCE_COLORS[DEFAULT_CLUSTER_CONFIDENCE] },
+  )
+}
+
 interface AppState {
+  // The current project — clusters and their settings. Persisted per project; switching
+  // projects never touches another project's saved clusters.
+  projectId: string | null
+  projectName: string
+  projectCreatedAt: number
+  /** Every saved project's id/name/updatedAt, for the project switcher. Not itself persisted — reloaded/kept in sync by usePersistence. */
+  projects: ProjectSummary[]
+
+  // The current dataset — NOT persisted (a project only remembers clusters/settings, not
+  // listings), so switching projects or reloading the page always starts with an empty map.
   datasetFileName: string | null
   datasetUploadedAt: number | null
   listings: Listing[]
   isLoadingDataset: boolean
   datasetError: string | null
+  /** Filename of the CSV last uploaded into this project, before this session's dataset (if any) was cleared — a re-upload hint shown while datasetFileName is null. */
+  projectLastDatasetFileName: string | null
 
   revenueThreshold: number
   colorModeId: string
@@ -32,7 +51,6 @@ interface AppState {
   setLoadingDataset: (loading: boolean) => void
   setDatasetError: (error: string | null) => void
   setDataset: (fileName: string, listings: Listing[]) => void
-  clearDataset: () => void
 
   setRevenueThreshold: (threshold: number) => void
   setColorModeId: (id: string) => void
@@ -48,16 +66,27 @@ interface AppState {
   removeCluster: (id: string) => void
   setActiveClusterId: (id: string | null) => void
 
-  hydrateFromPersisted: (state: PersistedState) => void
+  setProjects: (projects: ProjectSummary[]) => void
+  setProjectName: (name: string) => void
+  /** Loads a saved project's clusters/settings. Always clears the current dataset — a project doesn't carry listings, so the map starts empty until a CSV is (re-)uploaded. */
+  hydrateProject: (project: ProjectRecord) => void
+  /** Resets everything (clusters, settings, dataset) to defaults under a fresh project id/name. */
+  resetForNewProject: (id: string, name: string) => void
   markHydrated: () => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
+  projectId: null,
+  projectName: 'New Project',
+  projectCreatedAt: Date.now(),
+  projects: [],
+
   datasetFileName: null,
   datasetUploadedAt: null,
   listings: [],
   isLoadingDataset: false,
   datasetError: null,
+  projectLastDatasetFileName: null,
 
   revenueThreshold: DEFAULT_REVENUE_THRESHOLD,
   colorModeId: defaultColorModeId,
@@ -72,6 +101,8 @@ export const useAppStore = create<AppState>((set) => ({
 
   setLoadingDataset: (loading) => set({ isLoadingDataset: loading }),
   setDatasetError: (error) => set({ datasetError: error }),
+  // Uploading a CSV only ever replaces the listings — clusters belong to the project, not the
+  // upload, so re-uploading (e.g. a refreshed export for the same state) keeps them intact.
   setDataset: (fileName, listings) =>
     set({
       datasetFileName: fileName,
@@ -79,19 +110,6 @@ export const useAppStore = create<AppState>((set) => ({
       listings,
       isLoadingDataset: false,
       datasetError: null,
-      clusters: [],
-      activeClusterId: null,
-      filterValues: defaultFilterValues(),
-    }),
-  clearDataset: () =>
-    set({
-      datasetFileName: null,
-      datasetUploadedAt: null,
-      listings: [],
-      datasetError: null,
-      clusters: [],
-      activeClusterId: null,
-      filterValues: defaultFilterValues(),
     }),
 
   setRevenueThreshold: (threshold) => set({ revenueThreshold: threshold }),
@@ -128,20 +146,43 @@ export const useAppStore = create<AppState>((set) => ({
     })),
   setActiveClusterId: (id) => set({ activeClusterId: id }),
 
-  hydrateFromPersisted: (persisted) =>
+  setProjects: (projects) => set({ projects }),
+  setProjectName: (name) => set({ projectName: name }),
+  hydrateProject: (project) =>
     set({
-      datasetFileName: persisted.dataset?.fileName ?? null,
-      datasetUploadedAt: persisted.dataset?.uploadedAt ?? null,
-      listings: persisted.dataset?.listings ?? [],
-      // Backfill confidence for clusters persisted before this field existed.
-      clusters: persisted.clusters.map((c) =>
-        c.confidence ? c : { ...c, confidence: DEFAULT_CLUSTER_CONFIDENCE, color: CLUSTER_CONFIDENCE_COLORS[DEFAULT_CLUSTER_CONFIDENCE] },
-      ),
-      revenueThreshold: persisted.revenueThreshold,
-      colorModeId: persisted.colorModeId,
-      hiddenLegendEntries: persisted.hiddenLegendEntries ?? {},
-      filterValues: persisted.filterValues,
-      mapStyleId: persisted.mapStyleId,
+      projectId: project.id,
+      projectName: project.name,
+      projectCreatedAt: project.createdAt,
+      clusters: withConfidence(project.clusters),
+      revenueThreshold: project.revenueThreshold,
+      colorModeId: project.colorModeId,
+      hiddenLegendEntries: project.hiddenLegendEntries ?? {},
+      filterValues: project.filterValues,
+      mapStyleId: project.mapStyleId,
+      activeClusterId: null,
+      datasetFileName: null,
+      datasetUploadedAt: null,
+      listings: [],
+      datasetError: null,
+      projectLastDatasetFileName: project.lastDatasetFileName,
+    }),
+  resetForNewProject: (id, name) =>
+    set({
+      projectId: id,
+      projectName: name,
+      projectCreatedAt: Date.now(),
+      clusters: [],
+      revenueThreshold: DEFAULT_REVENUE_THRESHOLD,
+      colorModeId: defaultColorModeId,
+      hiddenLegendEntries: {},
+      filterValues: defaultFilterValues(),
+      mapStyleId: DEFAULT_MAP_STYLE_ID,
+      activeClusterId: null,
+      datasetFileName: null,
+      datasetUploadedAt: null,
+      listings: [],
+      datasetError: null,
+      projectLastDatasetFileName: null,
     }),
   markHydrated: () => set({ hasHydrated: true }),
 }))
