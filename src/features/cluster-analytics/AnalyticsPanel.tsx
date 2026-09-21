@@ -1,6 +1,7 @@
 import { ClusterExportButtons } from '@/features/export/ExportButtons'
-import { formatCurrency, formatPercent } from '@/lib/format'
-import { useActiveCluster, useClusterListings } from '@/store/selectors'
+import { formatCurrency, formatK, formatPercent } from '@/lib/format'
+import { useActiveCluster, useClusterAllListings, useClusterListings } from '@/store/selectors'
+import { useAppStore } from '@/store/useAppStore'
 import { chartDefinitions } from './registry'
 
 function average(values: number[]): number | null {
@@ -13,6 +14,8 @@ function average(values: number[]): number | null {
 export function AnalyticsPanel() {
   const cluster = useActiveCluster()
   const listings = useClusterListings(cluster)
+  const allListings = useClusterAllListings(cluster)
+  const revenueThreshold = useAppStore((s) => s.revenueThreshold)
 
   if (!cluster) {
     return <div className="analytics-panel analytics-panel--empty">Draw or select a cluster to see its breakdown.</div>
@@ -20,6 +23,8 @@ export function AnalyticsPanel() {
 
   const avgRevenue = average(listings.map((l) => l.revenuePotentialLtm).filter((v): v is number => v !== null))
   const avgOccupancy = average(listings.map((l) => l.occupancyRateLtm).filter((v): v is number => v !== null))
+  const pctAboveThreshold =
+    allListings.length > 0 ? allListings.filter((l) => l.revenueTierId !== 'below').length / allListings.length : null
 
   return (
     <div className="analytics-panel">
@@ -40,6 +45,10 @@ export function AnalyticsPanel() {
         <div className="stat-tile">
           <span className="stat-tile__label">Avg Occupancy</span>
           <span className="stat-tile__value">{formatPercent(avgOccupancy)}</span>
+        </div>
+        <div className="stat-tile" title="Of all listings in this polygon, regardless of active filters">
+          <span className="stat-tile__label">Above {formatK(revenueThreshold)}</span>
+          <span className="stat-tile__value">{formatPercent(pctAboveThreshold)}</span>
         </div>
       </div>
 
