@@ -25,3 +25,11 @@ export function ringBounds(ring: Position[]): LngLatBounds | null {
   if (!lngRange || !latRange) return null
   return { sw: [lngRange.min, latRange.min], ne: [lngRange.max, latRange.max] }
 }
+
+/** Bounds enclosing every listing's coordinates — the map's "home" view for a dataset. */
+export function datasetBounds<T extends Listing>(listings: T[]): LngLatBounds | null {
+  const lngRange = minMax(listings.map((l) => l.longitude))
+  const latRange = minMax(listings.map((l) => l.latitude))
+  if (!lngRange || !latRange) return null
+  return { sw: [lngRange.min, latRange.min], ne: [lngRange.max, latRange.max] }
+}

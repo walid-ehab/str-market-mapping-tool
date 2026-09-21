@@ -10,7 +10,7 @@ import {
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './setupMapWorker'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
-import { minMax } from '@/lib/math'
+import { datasetBounds } from '@/lib/geo'
 import { useActiveColorMode, useFilteredListings } from '@/store/selectors'
 import { useAppStore } from '@/store/useAppStore'
 import { MapProvider } from './MapContext'
@@ -191,16 +191,9 @@ export function MapView({ children, onMapReady }: MapViewProps) {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapInstance || rawListings.length === 0) return
-    const lngRange = minMax(rawListings.map((l) => l.longitude))
-    const latRange = minMax(rawListings.map((l) => l.latitude))
-    if (!lngRange || !latRange) return
-    map.fitBounds(
-      [
-        [lngRange.min, latRange.min],
-        [lngRange.max, latRange.max],
-      ],
-      { padding: 48, duration: 0, maxZoom: 12 },
-    )
+    const bounds = datasetBounds(rawListings)
+    if (!bounds) return
+    map.fitBounds([bounds.sw, bounds.ne], { padding: 48, duration: 0, maxZoom: 12 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapInstance, rawListings.length])
 

@@ -46,8 +46,8 @@ button {
 /* --- Sidebar --- */
 
 .sidebar {
-  width: 340px;
-  min-width: 340px;
+  width: 360px;
+  min-width: 360px;
   background: var(--panel-bg);
   border-right: 1px solid var(--border);
   display: flex;
@@ -605,6 +605,13 @@ button {
 .maplibregl-ctrl-top-left .mapbox-gl-draw_ctrl-draw-btn.active,
 .maplibregl-ctrl-top-left .mapbox-gl-draw_ctrl-draw-btn.active:hover {
   background-color: var(--accent);
+}
+
+/* Reset-map-view button, injected next to Draw's own polygon/trash buttons (see
+   injectResetMapButton in PolygonDraw.tsx) — reuses their base button styling, just with its
+   own icon: four inward-pointing corner brackets, the common "fit/reset view" glyph. */
+.reset-map-btn {
+  background-image: url('data:image/svg+xml;utf8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="20" height="20">%3Cpath d="M3,3 L7,3 L7,5 L5,5 L5,7 L3,7 Z M17,3 L13,3 L13,5 L15,5 L15,7 L17,7 Z M3,17 L7,17 L7,15 L5,15 L5,13 L3,13 Z M17,17 L13,17 L13,15 L15,15 L15,13 L17,13 Z"/>%3C/svg>');
 }
 
 .map-overlay {
