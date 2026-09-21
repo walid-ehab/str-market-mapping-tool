@@ -800,8 +800,21 @@ button {
 }
 
 @media print {
+  /* Hide the whole app (sidebar, map, everything) and print only the report subtree — without
+     this, both the report and the page underneath it print together, since .report-view was
+     only given print-specific layout, never made the sole visible thing on the page. */
+  body * {
+    visibility: hidden;
+  }
+
+  .report-view,
+  .report-view * {
+    visibility: visible;
+  }
+
   .report-view {
-    position: static;
+    position: absolute;
+    inset: 0;
     overflow: visible;
   }
 
