@@ -6,8 +6,43 @@ import { useEffect, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { useMapInstance } from '@/features/map/MapContext'
 import { CLUSTER_CONFIDENCE_COLORS, DEFAULT_CLUSTER_CONFIDENCE } from '@/lib/clusterConfidence'
+import { datasetBounds } from '@/lib/geo'
 import { useAppStore } from '@/store/useAppStore'
 import type { Cluster } from '@/types/cluster'
+
+/**
+ * mapbox-gl-draw only offers polygon/trash-style controls — there's no way to add a custom
+ * button through its own API — so this appends one directly into its already-rendered button
+ * group (a plain DOM node, not React's). Re-run this after every (re)attach of the control,
+ * since removeControl()/addControl() (basemap switching) recreates that DOM from scratch and
+ * would otherwise silently drop the button.
+ */
+function injectResetMapButton(map: MapLibreMap, onReset: () => void) {
+  const MAX_ATTEMPTS = 120
+  let attempts = 0
+  const attempt = () => {
+    attempts += 1
+    try {
+      const group = map.getContainer().querySelector('.maplibregl-ctrl-top-left .mapboxgl-ctrl-group')
+      if (group) {
+        if (!group.querySelector('.reset-map-btn')) {
+          const button = document.createElement('button')
+          button.type = 'button'
+          button.className = 'mapbox-gl-draw_ctrl-draw-btn reset-map-btn'
+          button.title = 'Reset map view'
+          button.setAttribute('aria-label', 'Reset map view')
+          button.addEventListener('click', onReset)
+          group.appendChild(button)
+        }
+        return
+      }
+    } catch {
+      return // map torn down mid-poll
+    }
+    if (attempts < MAX_ATTEMPTS) requestAnimationFrame(attempt)
+  }
+  attempt()
+}
 
 // Fallback for a polygon somehow rendered before its confidence property is set.
 const DRAW_DEFAULT_COLOR = '#3bb2d0'
@@ -106,6 +141,11 @@ export function PolygonDraw() {
   useEffect(() => {
     if (!map) return
 
+    const resetMapView = () => {
+      const bounds = datasetBounds(useAppStore.getState().listings)
+      if (bounds) map.fitBounds([bounds.sw, bounds.ne], { padding: 48, duration: 600, maxZoom: 12 })
+    }
+
     const draw = new MapboxDraw({
       displayControlsDefault: false,
       controls: { polygon: true, trash: true },
@@ -114,6 +154,7 @@ export function PolygonDraw() {
     map.addControl(draw, 'top-left')
     drawRef.current = draw
     applyConfidenceStylingWhenReady(map)
+    injectResetMapButton(map, resetMapView)
 
     for (const cluster of useAppStore.getState().clusters) {
       draw.add(clusterToFeature(cluster))
@@ -166,6 +207,7 @@ export function PolygonDraw() {
         map.removeControl(draw)
         map.addControl(draw, 'top-left')
         applyConfidenceStylingWhenReady(map)
+        injectResetMapButton(map, resetMapView)
         for (const cluster of useAppStore.getState().clusters) {
           draw.add(clusterToFeature(cluster))
         }
