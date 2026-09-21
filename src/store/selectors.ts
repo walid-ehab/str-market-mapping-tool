@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { getColorMode } from '@/features/color-modes/registry'
+import { colorModes, getColorMode } from '@/features/color-modes/registry'
 import type { ColorMode } from '@/features/color-modes/types'
 import { filterDefinitions } from '@/features/filters/registry'
 import { listingsInCluster } from '@/lib/geo'
@@ -22,21 +22,29 @@ export function useEnrichedListings(): EnrichedListing[] {
   }, [listings, threshold])
 }
 
-/** Enriched listings after every registered filter's predicate is applied, plus any legend entries toggled off. */
+/**
+ * Enriched listings after every registered filter's predicate is applied, plus any legend
+ * entries toggled off — in ANY color mode, not just whichever one is currently displayed.
+ * Toggling "Below 90K" off in Revenue Tier mode keeps those listings hidden even after
+ * switching to Bedrooms mode; each mode's own toggles compound rather than resetting.
+ */
 export function useFilteredListings(): EnrichedListing[] {
   const enriched = useEnrichedListings()
   const filterValues = useAppStore((s) => s.filterValues)
-  const colorMode = useActiveColorMode()
-  const colorModeId = useAppStore((s) => s.colorModeId)
-  const hiddenEntries = useAppStore((s) => s.hiddenLegendEntries[colorModeId])
+  const hiddenLegendEntries = useAppStore((s) => s.hiddenLegendEntries)
 
   return useMemo(() => {
-    const hidden = hiddenEntries && hiddenEntries.length > 0 ? new Set(hiddenEntries) : null
+    const hiddenByMode = colorModes
+      .map((mode) => ({ mode, hidden: hiddenLegendEntries[mode.id] }))
+      .filter((entry): entry is { mode: ColorMode; hidden: string[] } => !!entry.hidden && entry.hidden.length > 0)
+
     return enriched.filter((listing) => {
-      if (hidden?.has(colorMode.getEntryId(listing))) return false
+      for (const { mode, hidden } of hiddenByMode) {
+        if (hidden.includes(mode.getEntryId(listing))) return false
+      }
       return filterDefinitions.every((filter) => filter.predicate(listing, filterValues[filter.id] ?? filter.defaultValue))
     })
-  }, [enriched, filterValues, colorMode, hiddenEntries])
+  }, [enriched, filterValues, hiddenLegendEntries])
 }
 
 export function useActiveColorMode(): ColorMode {

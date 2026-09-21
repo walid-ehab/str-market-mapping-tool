@@ -9,17 +9,18 @@ import { CLUSTER_CONFIDENCE_COLORS, DEFAULT_CLUSTER_CONFIDENCE } from '@/lib/clu
 import { useAppStore } from '@/store/useAppStore'
 import type { Cluster } from '@/types/cluster'
 
-// mapbox-gl-draw's own default theme colors, kept as the fallback/"being edited" highlight.
-const DRAW_ACTIVE_COLOR = '#fbb03b'
+// Fallback for a polygon somehow rendered before its confidence property is set.
 const DRAW_DEFAULT_COLOR = '#3bb2d0'
 
 /**
- * Recolors Draw's inactive polygon fill/outline by the cluster's confidence instead of
- * Draw's single default color. Runs after every (re)attach of the control, since setStyle()
- * recreates these layers from scratch each time — see the style.load handler below.
+ * Recolors Draw's polygon fill/outline by the cluster's confidence instead of Draw's single
+ * default color — always, whether or not the polygon is currently selected/being edited, so
+ * the map always shows the same shade as the confidence picker. Selection is indicated by
+ * outline width instead of a color swap. Runs after every (re)attach of the control, since
+ * setStyle() recreates these layers from scratch each time — see the style.load handler below.
  */
 function applyConfidenceStyling(map: MapLibreMap) {
-  const confidenceMatch: ExpressionSpecification = [
+  const colorExpression: ExpressionSpecification = [
     'match',
     ['get', 'user_confidence'],
     'great',
@@ -30,14 +31,44 @@ function applyConfidenceStyling(map: MapLibreMap) {
     CLUSTER_CONFIDENCE_COLORS.maybe,
     DRAW_DEFAULT_COLOR,
   ]
-  const colorExpression: ExpressionSpecification = ['case', ['==', ['get', 'active'], 'true'], DRAW_ACTIVE_COLOR, confidenceMatch]
+  const lineWidthExpression: ExpressionSpecification = ['case', ['==', ['get', 'active'], 'true'], 3, 2]
 
   for (const suffix of ['cold', 'hot']) {
     const fillLayer = `gl-draw-polygon-fill.${suffix}`
     const lineLayer = `gl-draw-lines.${suffix}`
     if (map.getLayer(fillLayer)) map.setPaintProperty(fillLayer, 'fill-color', colorExpression)
-    if (map.getLayer(lineLayer)) map.setPaintProperty(lineLayer, 'line-color', colorExpression)
+    if (map.getLayer(lineLayer)) {
+      map.setPaintProperty(lineLayer, 'line-color', colorExpression)
+      map.setPaintProperty(lineLayer, 'line-width', lineWidthExpression)
+      // line-dasharray is left at Draw's default (dashed while active, solid otherwise) —
+      // a second, color-independent cue for "this is the selected polygon".
+    }
   }
+}
+
+/**
+ * MapboxDraw.onAdd() creates its layers synchronously only if `map.loaded()` happens to be
+ * true at that exact instant — otherwise it defers to the map's next 'load' plus a 16ms poll
+ * internally. Calling applyConfidenceStyling() immediately after addControl() can therefore
+ * silently no-op (the layers don't exist yet, so every `map.getLayer(...)` check is false) —
+ * so we poll ourselves until they exist, mirroring Draw's own defensive approach.
+ */
+function applyConfidenceStylingWhenReady(map: MapLibreMap) {
+  const MAX_ATTEMPTS = 120 // ~2s at 60fps — generous, but bounded in case the control never attaches (e.g. unmounted mid-flight)
+  let attempts = 0
+  const attempt = () => {
+    attempts += 1
+    try {
+      if (map.getLayer('gl-draw-polygon-fill.cold')) {
+        applyConfidenceStyling(map)
+        return
+      }
+    } catch {
+      return // map torn down mid-poll
+    }
+    if (attempts < MAX_ATTEMPTS) requestAnimationFrame(attempt)
+  }
+  attempt()
 }
 
 /**
@@ -82,7 +113,7 @@ export function PolygonDraw() {
     })
     map.addControl(draw, 'top-left')
     drawRef.current = draw
-    applyConfidenceStyling(map)
+    applyConfidenceStylingWhenReady(map)
 
     for (const cluster of useAppStore.getState().clusters) {
       draw.add(clusterToFeature(cluster))
@@ -103,10 +134,9 @@ export function PolygonDraw() {
         createdAt: Date.now(),
       }
       useAppStore.getState().addCluster(cluster)
-      // The feature mapbox-gl-draw just created has no `confidence` property yet (it was
-      // drawn by hand, not built from a Cluster) — give it one so it picks up the default
-      // color immediately instead of falling back to Draw's own default.
-      draw.setFeatureProperty(id, 'confidence', DEFAULT_CLUSTER_CONFIDENCE)
+      // The confidence-sync effect below picks this up (addCluster changes `clusters`) and
+      // gives the freshly-drawn feature its `confidence` property — see there for why that
+      // has to go through draw.add() rather than draw.setFeatureProperty().
     }
 
     const handleUpdate = (e: { features: Feature<Polygon>[] }) => {
@@ -135,7 +165,7 @@ export function PolygonDraw() {
       try {
         map.removeControl(draw)
         map.addControl(draw, 'top-left')
-        applyConfidenceStyling(map)
+        applyConfidenceStylingWhenReady(map)
         for (const cluster of useAppStore.getState().clusters) {
           draw.add(clusterToFeature(cluster))
         }
@@ -172,13 +202,17 @@ export function PolygonDraw() {
   }, [activeClusterId])
 
   // Push confidence changes (e.g. from the analytics panel's picker) onto the already-drawn
-  // feature, so the polygon recolors immediately without waiting for a style switch.
+  // feature, so the polygon recolors immediately without waiting for a style switch. This
+  // goes through draw.add() rather than the seemingly-more-direct draw.setFeatureProperty():
+  // setFeatureProperty marks the feature dirty but never actually triggers a re-render (only
+  // add()/set() call store.render() internally) — the property changes but nothing repaints.
+  // add() on an existing id is safe here: it diffs properties/coordinates and updates in place.
   const clusters = useAppStore((s) => s.clusters)
   useEffect(() => {
     const draw = drawRef.current
     if (!draw) return
     for (const cluster of clusters) {
-      draw.setFeatureProperty(cluster.id, 'confidence', cluster.confidence)
+      if (draw.get(cluster.id)) draw.add(clusterToFeature(cluster))
     }
   }, [clusters])
 
