@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import { formatCurrency } from '@/lib/format'
 import { minMax } from '@/lib/math'
 import type { FilterComponentProps, FilterDefinition } from './types'
 
@@ -33,7 +32,12 @@ function RevenueRangeControl({ value, onChange, listings }: FilterComponentProps
             onChange={(e) => onChange({ ...value, min: Number(e.target.value) })}
           />
         </label>
-        <span className="filter-control__value">{formatCurrency(min)}</span>
+        <input
+          type="number"
+          className="filter-control__number"
+          value={min}
+          onChange={(e) => onChange({ ...value, min: Number(e.target.value) || 0 })}
+        />
       </div>
       <div className="filter-control__row">
         <label>
@@ -47,7 +51,12 @@ function RevenueRangeControl({ value, onChange, listings }: FilterComponentProps
             onChange={(e) => onChange({ ...value, max: Number(e.target.value) })}
           />
         </label>
-        <span className="filter-control__value">{formatCurrency(max)}</span>
+        <input
+          type="number"
+          className="filter-control__number"
+          value={max}
+          onChange={(e) => onChange({ ...value, max: Number(e.target.value) || 0 })}
+        />
       </div>
       {(value.min !== null || value.max !== null) && (
         <button type="button" className="filter-control__reset" onClick={() => onChange(DEFAULT_VALUE)}>

@@ -22,18 +22,21 @@ export function useEnrichedListings(): EnrichedListing[] {
   }, [listings, threshold])
 }
 
-/** Enriched listings after every registered filter's predicate is applied. */
+/** Enriched listings after every registered filter's predicate is applied, plus any legend entries toggled off. */
 export function useFilteredListings(): EnrichedListing[] {
   const enriched = useEnrichedListings()
   const filterValues = useAppStore((s) => s.filterValues)
+  const colorMode = useActiveColorMode()
+  const colorModeId = useAppStore((s) => s.colorModeId)
+  const hiddenEntries = useAppStore((s) => s.hiddenLegendEntries[colorModeId])
 
-  return useMemo(
-    () =>
-      enriched.filter((listing) =>
-        filterDefinitions.every((filter) => filter.predicate(listing, filterValues[filter.id] ?? filter.defaultValue)),
-      ),
-    [enriched, filterValues],
-  )
+  return useMemo(() => {
+    const hidden = hiddenEntries && hiddenEntries.length > 0 ? new Set(hiddenEntries) : null
+    return enriched.filter((listing) => {
+      if (hidden?.has(colorMode.getEntryId(listing))) return false
+      return filterDefinitions.every((filter) => filter.predicate(listing, filterValues[filter.id] ?? filter.defaultValue))
+    })
+  }, [enriched, filterValues, colorMode, hiddenEntries])
 }
 
 export function useActiveColorMode(): ColorMode {

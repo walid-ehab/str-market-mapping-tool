@@ -48,6 +48,19 @@ function ClusterRow({ cluster }: { cluster: Cluster }) {
           {cluster.name}
         </span>
       )}
+      {!isEditing && (
+        <button
+          type="button"
+          className="cluster-row__rename"
+          title="Rename cluster"
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsEditing(true)
+          }}
+        >
+          ✎
+        </button>
+      )}
       <button
         type="button"
         className="cluster-row__delete"

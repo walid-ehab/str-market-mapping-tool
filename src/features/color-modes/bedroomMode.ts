@@ -5,6 +5,7 @@ export const bedroomColorMode: ColorMode = {
   id: 'bedrooms',
   label: 'Bedrooms',
   getColor: (listing) => BEDROOM_BUCKET_COLORS[bedroomBucket(listing.bedrooms)],
+  getEntryId: (listing) => bedroomBucket(listing.bedrooms),
   getLegend: (listings): LegendEntry[] => {
     const present = new Set(listings.map((l) => bedroomBucket(l.bedrooms)))
     return BEDROOM_BUCKET_ORDER.filter((bucket) => present.has(bucket)).map((bucket) => ({

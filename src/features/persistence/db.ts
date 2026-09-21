@@ -18,6 +18,7 @@ export interface PersistedState {
   clusters: Cluster[]
   revenueThreshold: number
   colorModeId: string
+  hiddenLegendEntries: Record<string, string[]>
   filterValues: Record<string, unknown>
   mapStyleId: string
 }
