@@ -1,5 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { useState } from 'react'
+import { CollapsibleSection } from '@/components/CollapsibleSection'
 import { UploadButton } from '@/features/csv-upload/UploadButton'
 import { ClusterList } from '@/features/clusters/ClusterList'
 import { AnalyticsPanel } from '@/features/cluster-analytics/AnalyticsPanel'
@@ -33,10 +34,9 @@ function App() {
             <p>Upload a listings CSV to plot it on the map.</p>
           </div>
 
-          <div className="sidebar__section">
-            <h2>Step 1 · Select or Create a Project</h2>
+          <CollapsibleSection title="Step 1 · Select or Create a Project">
             <ProjectSwitcher />
-          </div>
+          </CollapsibleSection>
 
           <div className="sidebar__section">
             <h2>Step 2 · Upload a CSV</h2>
@@ -50,10 +50,9 @@ function App() {
                 <ThresholdControl />
               </div>
 
-              <div className="sidebar__section">
-                <h2>Filters</h2>
+              <CollapsibleSection title="Filters">
                 <FilterPanel />
-              </div>
+              </CollapsibleSection>
 
               <div className="sidebar__section sidebar__section--grow">
                 <div className="sidebar__section-header">

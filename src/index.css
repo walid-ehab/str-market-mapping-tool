@@ -95,6 +95,33 @@ button {
   justify-content: space-between;
 }
 
+.collapsible-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+}
+
+.collapsible-section__header h2 {
+  flex: 1;
+}
+
+.collapsible-section__chevron {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.collapsible-section__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 /* --- Upload --- */
 
 .upload-panel {
