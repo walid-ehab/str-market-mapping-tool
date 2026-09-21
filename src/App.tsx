@@ -1,0 +1,70 @@
+import { UploadButton } from '@/features/csv-upload/UploadButton'
+import { ClusterList } from '@/features/clusters/ClusterList'
+import { AnalyticsPanel } from '@/features/cluster-analytics/AnalyticsPanel'
+import { ExportAllClustersButton } from '@/features/export/ExportButtons'
+import { FilterPanel } from '@/features/filters/FilterPanel'
+import { Legend } from '@/features/map/Legend'
+import { MapView } from '@/features/map/MapView'
+import { StyleSwitcher } from '@/features/map/StyleSwitcher'
+import { usePersistence } from '@/features/persistence/usePersistence'
+import { PolygonDraw } from '@/features/polygon-draw/PolygonDraw'
+import { ThresholdControl } from '@/features/revenue-tiering/ThresholdControl'
+import { useAppStore } from '@/store/useAppStore'
+
+function App() {
+  usePersistence()
+  const hasHydrated = useAppStore((s) => s.hasHydrated)
+  const hasDataset = useAppStore((s) => s.listings.length > 0)
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="sidebar__header">
+          <h1>STR Market Mapping</h1>
+          <p>Upload a listings CSV to plot it on the map.</p>
+        </div>
+
+        <UploadButton />
+
+        {hasDataset && (
+          <>
+            <div className="sidebar__section">
+              <h2>Revenue Tiering</h2>
+              <ThresholdControl />
+            </div>
+
+            <div className="sidebar__section">
+              <h2>Filters</h2>
+              <FilterPanel />
+            </div>
+
+            <div className="sidebar__section sidebar__section--grow">
+              <div className="sidebar__section-header">
+                <h2>Clusters</h2>
+                <ExportAllClustersButton />
+              </div>
+              <ClusterList />
+              <AnalyticsPanel />
+            </div>
+          </>
+        )}
+      </aside>
+
+      <main className="map-pane">
+        {!hasHydrated ? (
+          <div className="map-pane__placeholder">Loading…</div>
+        ) : hasDataset ? (
+          <MapView>
+            <StyleSwitcher />
+            <Legend />
+            <PolygonDraw />
+          </MapView>
+        ) : (
+          <div className="map-pane__placeholder">Upload a CSV to get started.</div>
+        )}
+      </main>
+    </div>
+  )
+}
+
+export default App
