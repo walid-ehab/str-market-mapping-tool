@@ -55,3 +55,14 @@ export function useClusterListings(cluster: Cluster | null): EnrichedListing[] {
   const filtered = useFilteredListings()
   return useMemo(() => (cluster ? listingsInCluster(filtered, cluster) : []), [filtered, cluster])
 }
+
+/**
+ * Every listing inside a cluster's polygon, ignoring active filters and hidden legend
+ * entries — only the revenue threshold (baked into tiering) and the polygon itself matter.
+ * For "what % of everything here is actually above threshold", independent of whatever the
+ * user happens to be filtering the map by right now.
+ */
+export function useClusterAllListings(cluster: Cluster | null): EnrichedListing[] {
+  const enriched = useEnrichedListings()
+  return useMemo(() => (cluster ? listingsInCluster(enriched, cluster) : []), [enriched, cluster])
+}

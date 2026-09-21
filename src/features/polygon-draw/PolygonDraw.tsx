@@ -88,12 +88,18 @@ export function PolygonDraw() {
       useAppStore.getState().setActiveClusterId(feature ? String(feature.id) : null)
     }
 
-    // setStyle() (basemap switching) tears down every custom layer, Draw's own included.
-    // Re-attaching the same Draw instance restores its render layers without losing its features.
+    // setStyle() (basemap switching) tears down every custom layer, Draw's own included, so
+    // we re-attach the same Draw instance to restore its render layers. That alone isn't
+    // enough, though: MapboxDraw.onAdd() constructs a brand new internal feature Store every
+    // time it's added — the polygons it was rendering are gone, not just hidden — so we also
+    // re-populate it from our own store (the real source of truth for clusters) afterward.
     const handleStyleLoad = () => {
       try {
         map.removeControl(draw)
         map.addControl(draw, 'top-left')
+        for (const cluster of useAppStore.getState().clusters) {
+          draw.add(clusterToFeature(cluster))
+        }
       } catch {
         // Map may be mid-teardown.
       }
