@@ -1,7 +1,8 @@
 import { ClusterStatTiles } from '@/features/cluster-analytics/ClusterStatTiles'
 import { chartDefinitions } from '@/features/cluster-analytics/registry'
 import { CLUSTER_CONFIDENCE_COLORS, CLUSTER_CONFIDENCE_LABELS } from '@/lib/clusterConfidence'
-import { clusterToLatLngList } from '@/lib/exportPolygon'
+import { CopyButton } from './CopyButton'
+import { formatPolygonGeoJson } from './polygonJson'
 import type { ReportCluster } from './useReportClusters'
 
 interface ReportViewProps {
@@ -54,18 +55,16 @@ export function ReportView({ reportClusters, snapshots, revenueThreshold, datase
               <img className="report-cluster__snapshot" src={snapshots[cluster.id]} alt={`Map snapshot of ${cluster.name}`} />
             )}
 
-            <ClusterStatTiles stats={stats} revenueThreshold={revenueThreshold} />
+            <ClusterStatTiles stats={stats} revenueThreshold={revenueThreshold} variant="report" />
 
             <div className="report-cluster__coords">
-              <h3>Polygon Coordinates ({cluster.ring.length} points)</h3>
-              <ol className="report-cluster__coords-list">
-                {clusterToLatLngList(cluster).map((point, index) => (
-                  // eslint-disable-next-line react/no-array-index-key -- vertices have no stable id and never reorder independently of the ring array
-                  <li key={index}>
-                    {point.lat.toFixed(5)}, {point.lng.toFixed(5)}
-                  </li>
-                ))}
-              </ol>
+              <div className="report-cluster__coords-header">
+                <h3>Polygon Boundary ({cluster.ring.length} points, GeoJSON)</h3>
+                <CopyButton value={formatPolygonGeoJson(cluster)} />
+              </div>
+              <pre className="report-cluster__coords-code">
+                <code>{formatPolygonGeoJson(cluster)}</code>
+              </pre>
             </div>
 
             {listings.length > 0 && (

@@ -747,22 +747,50 @@ button {
   display: block;
 }
 
-.report-cluster__coords h3 {
+.report-cluster__coords-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.report-cluster__coords-header h3 {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
-  margin: 0 0 6px;
+  margin: 0;
 }
 
-.report-cluster__coords-list {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px 12px;
+.report-cluster__coords-code {
+  background: var(--brand-dark);
+  color: #e8f3ee;
+  border-radius: var(--radius);
+  padding: 12px 14px;
   margin: 0;
-  padding-left: 20px;
+  overflow-x: auto;
   font-size: 11px;
-  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.report-cluster__coords-code code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  white-space: pre;
+}
+
+.copy-button {
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.copy-button:hover {
+  background: var(--bg);
 }
 
 .report-cluster__charts {
@@ -795,5 +823,9 @@ button {
   .report-cluster:last-child {
     page-break-after: auto;
     break-after: auto;
+  }
+
+  .copy-button {
+    display: none;
   }
 }
