@@ -5,7 +5,7 @@ import { fileURLToPath, URL } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 
-const MAPLIBRE_WORKER_BASE = '/maplibre-worker'
+const MAPLIBRE_WORKER_DIR = 'maplibre-worker'
 // The worker script imports this sibling module by its literal relative filename at
 // runtime, so both files must be served from the same directory under an unhashed path —
 // see maplibreWorkerFiles() below for why this can't go through Vite's normal asset pipeline.
@@ -27,8 +27,13 @@ function maplibreWorkerFiles(): Plugin {
   return {
     name: 'maplibre-worker-files',
     configureServer(server) {
+      // Vite serves the dev server under `base` too, so the request path is prefixed with
+      // it (e.g. `/str-market-mapping-tool/maplibre-worker/...`) — match against that,
+      // not a hardcoded root-relative path.
+      const prefix = `${server.config.base}${MAPLIBRE_WORKER_DIR}/`
       server.middlewares.use((req, res, next) => {
-        const name = req.url?.split('?')[0]?.replace(`${MAPLIBRE_WORKER_BASE}/`, '')
+        const url = req.url?.split('?')[0] ?? ''
+        const name = url.startsWith(prefix) ? url.slice(prefix.length) : null
         if (!name || !MAPLIBRE_WORKER_FILES.includes(name)) {
           next()
           return
@@ -41,7 +46,7 @@ function maplibreWorkerFiles(): Plugin {
       for (const name of MAPLIBRE_WORKER_FILES) {
         this.emitFile({
           type: 'asset',
-          fileName: `maplibre-worker/${name}`,
+          fileName: `${MAPLIBRE_WORKER_DIR}/${name}`,
           source: readFileSync(join(maplibreDist, name)),
         })
       }
@@ -51,6 +56,9 @@ function maplibreWorkerFiles(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Served at https://<user>.github.io/str-market-mapping-tool/ — a GitHub Pages project
+  // site, not a custom domain, so every asset URL needs this prefix.
+  base: '/str-market-mapping-tool/',
   plugins: [react(), maplibreWorkerFiles()],
   resolve: {
     alias: {
