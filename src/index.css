@@ -767,16 +767,18 @@ button {
   background: var(--brand-dark);
   color: #e8f3ee;
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: 10px 14px;
   margin: 0;
-  overflow-x: auto;
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.5;
 }
 
 .report-cluster__coords-code code {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  white-space: pre;
+  /* pre-wrap (not pre + overflow-x:auto) so a long compact coordinate line wraps instead of
+     getting clipped — a horizontal scrollbar is useless once this is printed to PDF. */
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .copy-button {
