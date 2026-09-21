@@ -94,26 +94,55 @@ export function MapView({ children, onMapReady }: MapViewProps) {
       setMapInstance(map)
     })
 
-    // Click-to-pin instead of hover: a hover popup disappears the instant the cursor leaves
-    // the (tiny) circle, which made the "View Listing" link inside it unreachable. Clicking
-    // opens a popup that stays open — with its own close button, and closeOnClick so
-    // clicking elsewhere on the map (or another listing) dismisses/replaces it — the
-    // standard pattern for popups with interactive content.
-    const popup = new Popup({ closeButton: true, closeOnClick: true, maxWidth: '280px' })
+    // Hover shows a live preview that follows the cursor, same as before. But a hover popup
+    // alone disappears the instant the cursor leaves the (tiny) circle — on the way toward
+    // the popup itself — making the "View Listing" link inside it unreachable. So a click
+    // "pins" it: it stops following the mouse and survives mouseleave, long enough to reach
+    // the link. Its own closeButton, or clicking anywhere else, closes it and unpins.
+    //
+    // closeOnClick is deliberately off: MapLibre's built-in version closes on ANY map click,
+    // including the very click on the listing that's supposed to pin it — that listener stays
+    // registered from the hover that first opened the popup, and fires right after our layer
+    // click handler below, undoing the pin within the same click. We instead close manually,
+    // only when the click misses the listings layer entirely (see the plain map click handler).
+    const popup = new Popup({ closeButton: true, closeOnClick: false, maxWidth: '280px' })
     popupRef.current = popup
+
+    let isPinned = false
+    popup.on('close', () => {
+      isPinned = false
+    })
+
+    const showPopup = (feature: NonNullable<MapLayerMouseEvent['features']>[number]) => {
+      const props = feature.properties as unknown as ListingFeatureProperties
+      const coordinates = (feature.geometry as Point).coordinates.slice() as [number, number]
+      popup.setLngLat(coordinates).setHTML(buildPopupHtml(props))
+      if (!popup.isOpen()) popup.addTo(map)
+    }
 
     map.on('mouseenter', LISTINGS_LAYER_ID, () => {
       map.getCanvas().style.cursor = 'pointer'
     })
+    map.on('mousemove', LISTINGS_LAYER_ID, (e: MapLayerMouseEvent) => {
+      if (isPinned) return
+      const feature = e.features?.[0]
+      if (feature) showPopup(feature)
+    })
     map.on('mouseleave', LISTINGS_LAYER_ID, () => {
       map.getCanvas().style.cursor = ''
+      if (!isPinned) popup.remove()
     })
     map.on('click', LISTINGS_LAYER_ID, (e: MapLayerMouseEvent) => {
       const feature = e.features?.[0]
       if (!feature) return
-      const props = feature.properties as unknown as ListingFeatureProperties
-      const coordinates = (feature.geometry as Point).coordinates.slice() as [number, number]
-      popup.setLngLat(coordinates).setHTML(buildPopupHtml(props)).addTo(map)
+      showPopup(feature)
+      isPinned = true
+    })
+    // Manual stand-in for closeOnClick: only close when the click didn't land on a listing
+    // (a click that did was already handled above, and must not also close the popup it just pinned).
+    map.on('click', (e: MapLayerMouseEvent) => {
+      const hitListing = map.queryRenderedFeatures(e.point, { layers: [LISTINGS_LAYER_ID] }).length > 0
+      if (!hitListing) popup.remove()
     })
 
     mapRef.current = map
