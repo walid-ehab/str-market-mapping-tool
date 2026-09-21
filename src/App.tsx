@@ -11,6 +11,7 @@ import { MapView } from '@/features/map/MapView'
 import { StyleSwitcher } from '@/features/map/StyleSwitcher'
 import { usePersistence } from '@/features/persistence/usePersistence'
 import { PolygonDraw } from '@/features/polygon-draw/PolygonDraw'
+import { GenerateReportButton } from '@/features/report/GenerateReportButton'
 import { ThresholdControl } from '@/features/revenue-tiering/ThresholdControl'
 import { useAppStore } from '@/store/useAppStore'
 
@@ -51,6 +52,7 @@ function App() {
                   <ExportAllClustersButton />
                 </div>
                 <ClusterList />
+                <GenerateReportButton />
                 <AnalyticsPanel />
               </div>
             </>

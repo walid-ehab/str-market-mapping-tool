@@ -85,6 +85,9 @@ export function MapView({ children, onMapReady }: MapViewProps) {
       style: getMapStyle(mapStyleId).style,
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
+      // Needed for the report feature's canvas.toDataURL() snapshots — without it the WebGL
+      // drawing buffer can be cleared by the time a snapshot is requested outside the render call.
+      canvasContextAttributes: { preserveDrawingBuffer: true },
     })
     map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
     map.addControl(new ScaleControl({ maxWidth: 120, unit: 'imperial' }), 'bottom-left')
