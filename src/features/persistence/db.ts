@@ -35,6 +35,14 @@ let dbPromise: Promise<IDBPDatabase> | null = null
 
 function getDb(): Promise<IDBPDatabase> {
   dbPromise ??= openDB(DB_NAME, DB_VERSION, {
+    // Fires on THIS connection when some other tab opens a newer version (e.g. after a
+    // deploy) and is waiting on us. Without this, an old tab left open holds the lock
+    // indefinitely and every other tab's openDB() call — including a fresh reload — hangs
+    // forever with no error, since the versionchange transaction never gets to run.
+    blocking() {
+      dbPromise?.then((db) => db.close())
+      dbPromise = null
+    },
     upgrade(db, oldVersion, _newVersion, transaction) {
       if (!db.objectStoreNames.contains(PROJECTS_STORE)) {
         db.createObjectStore(PROJECTS_STORE, { keyPath: 'id' })

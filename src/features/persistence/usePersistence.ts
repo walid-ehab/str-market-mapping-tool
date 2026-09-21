@@ -11,6 +11,12 @@ import {
 } from './db'
 
 const SAVE_DEBOUNCE_MS = 500
+// If IndexedDB never resolves — e.g. an old browser tab left open from before a schema change
+// is still holding a lock on the database — hydration must still finish so the app doesn't get
+// stuck on "Loading…" forever. Falls back to a fresh in-memory project; persistence resumes
+// once whatever was blocking it clears (whether that's this session's own db.ts blocking()
+// handler elsewhere, or the user closing the other tab).
+const HYDRATE_TIMEOUT_MS = 4000
 
 /**
  * Hydrates the current project from IndexedDB once on mount (creating a first project if none
@@ -26,12 +32,20 @@ export function usePersistence(): void {
   const markHydrated = useAppStore((s) => s.markHydrated)
 
   useEffect(() => {
-    let cancelled = false
+    let settled = false
+
+    const timeoutId = window.setTimeout(() => {
+      if (settled) return
+      settled = true
+      resetForNewProject(uuidv4(), 'New Project')
+      markHydrated()
+    }, HYDRATE_TIMEOUT_MS)
+
     ;(async () => {
       try {
         const currentId = await getCurrentProjectId()
         const current = currentId ? await getProject(currentId) : null
-        if (cancelled) return
+        if (settled) return
 
         if (current) {
           hydrateProject(current)
@@ -40,17 +54,23 @@ export function usePersistence(): void {
           resetForNewProject(id, 'New Project')
           await setCurrentProjectId(id)
         }
+        if (settled) return
 
         const projects = await listProjects()
-        if (!cancelled) setProjects(projects)
+        if (!settled) setProjects(projects)
       } catch {
         // IndexedDB unavailable — proceed with an in-memory-only project.
       } finally {
-        if (!cancelled) markHydrated()
+        if (!settled) {
+          settled = true
+          markHydrated()
+        }
+        window.clearTimeout(timeoutId)
       }
     })()
     return () => {
-      cancelled = true
+      settled = true
+      window.clearTimeout(timeoutId)
     }
   }, [hydrateProject, resetForNewProject, setProjects, markHydrated])
 
