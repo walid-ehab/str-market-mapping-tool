@@ -8,6 +8,7 @@ export function UploadButton() {
   const datasetError = useAppStore((s) => s.datasetError)
   const datasetFileName = useAppStore((s) => s.datasetFileName)
   const listingCount = useAppStore((s) => s.listings.length)
+  const projectLastDatasetFileName = useAppStore((s) => s.projectLastDatasetFileName)
   const setLoadingDataset = useAppStore((s) => s.setLoadingDataset)
   const setDatasetError = useAppStore((s) => s.setDatasetError)
   const setDataset = useAppStore((s) => s.setDataset)
@@ -56,6 +57,9 @@ export function UploadButton() {
         <div className="upload-panel__meta">
           {datasetFileName} · {listingCount.toLocaleString()} listings
         </div>
+      )}
+      {!datasetFileName && projectLastDatasetFileName && (
+        <div className="upload-panel__meta">This project's clusters are saved — re-upload {projectLastDatasetFileName} to restore the map.</div>
       )}
       {datasetError && <div className="upload-panel__error">{datasetError}</div>}
     </div>
