@@ -53,6 +53,9 @@ button {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  /* Reserves the scrollbar's width whether or not it's currently needed, so content doesn't
+     shift/narrow the instant a taller selection (e.g. picking a cluster) makes it scrollable. */
+  scrollbar-gutter: stable;
   padding: 20px;
   gap: 20px;
 }
@@ -590,6 +593,18 @@ button {
    click falls through to the map canvas underneath them. */
 .mapboxgl-ctrl {
   pointer-events: auto;
+}
+
+/* mapbox-gl-draw's default "active" state for the polygon button is a 5%-opacity black tint —
+   nearly invisible against the sidebar-matching white control background regardless of which
+   basemap is selected underneath. Use the app's own accent color instead, high-contrast on
+   every basemap. Scoped through the control's own ancestor container (rather than just adding
+   !important to the identical bare selector) so the two rules aren't textually-identical
+   duplicates — some CSS minifiers merge those and can drop !important priority in the process,
+   which silently broke an earlier version of this fix in the production build. */
+.maplibregl-ctrl-top-left .mapbox-gl-draw_ctrl-draw-btn.active,
+.maplibregl-ctrl-top-left .mapbox-gl-draw_ctrl-draw-btn.active:hover {
+  background-color: var(--accent);
 }
 
 .map-overlay {
