@@ -13,6 +13,8 @@ declare module '@mapbox/mapbox-gl-draw' {
       Record<'point' | 'line_string' | 'polygon' | 'trash' | 'combine_features' | 'uncombine_features', boolean>
     >
     defaultMode?: string
+    /** Exposes custom feature properties to paint expressions as `user_<name>` — off by default. */
+    userProperties?: boolean
   }
 
   export interface DrawFeatureCollection {
@@ -30,5 +32,6 @@ declare module '@mapbox/mapbox-gl-draw' {
     delete(ids: string | string[]): this
     deleteAll(): this
     changeMode(mode: string, options?: { featureIds?: string[] }): this
+    setFeatureProperty(featureId: string, property: string, value: unknown): this
   }
 }

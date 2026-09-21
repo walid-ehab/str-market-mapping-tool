@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import { defaultColorModeId } from '@/features/color-modes/registry'
 import { defaultFilterValues } from '@/features/filters/registry'
 import type { PersistedState } from '@/features/persistence/db'
+import { CLUSTER_CONFIDENCE_COLORS, DEFAULT_CLUSTER_CONFIDENCE, type ClusterConfidence } from '@/lib/clusterConfidence'
 import type { Cluster } from '@/types/cluster'
 import type { Listing } from '@/types/listing'
 
@@ -43,6 +44,7 @@ interface AppState {
   addCluster: (cluster: Cluster) => void
   updateClusterRing: (id: string, ring: Position[]) => void
   renameCluster: (id: string, name: string) => void
+  setClusterConfidence: (id: string, confidence: ClusterConfidence) => void
   removeCluster: (id: string) => void
   setActiveClusterId: (id: string | null) => void
 
@@ -113,6 +115,12 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({
       clusters: state.clusters.map((c) => (c.id === id ? { ...c, name } : c)),
     })),
+  setClusterConfidence: (id, confidence) =>
+    set((state) => ({
+      clusters: state.clusters.map((c) =>
+        c.id === id ? { ...c, confidence, color: CLUSTER_CONFIDENCE_COLORS[confidence] } : c,
+      ),
+    })),
   removeCluster: (id) =>
     set((state) => ({
       clusters: state.clusters.filter((c) => c.id !== id),
@@ -125,7 +133,10 @@ export const useAppStore = create<AppState>((set) => ({
       datasetFileName: persisted.dataset?.fileName ?? null,
       datasetUploadedAt: persisted.dataset?.uploadedAt ?? null,
       listings: persisted.dataset?.listings ?? [],
-      clusters: persisted.clusters,
+      // Backfill confidence for clusters persisted before this field existed.
+      clusters: persisted.clusters.map((c) =>
+        c.confidence ? c : { ...c, confidence: DEFAULT_CLUSTER_CONFIDENCE, color: CLUSTER_CONFIDENCE_COLORS[DEFAULT_CLUSTER_CONFIDENCE] },
+      ),
       revenueThreshold: persisted.revenueThreshold,
       colorModeId: persisted.colorModeId,
       hiddenLegendEntries: persisted.hiddenLegendEntries ?? {},

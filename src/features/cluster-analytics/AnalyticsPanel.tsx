@@ -1,3 +1,4 @@
+import { ConfidencePicker } from '@/features/clusters/ConfidencePicker'
 import { ClusterExportButtons } from '@/features/export/ExportButtons'
 import { formatCurrency, formatK, formatPercent } from '@/lib/format'
 import { useActiveCluster, useClusterAllListings, useClusterListings } from '@/store/selectors'
@@ -16,6 +17,7 @@ export function AnalyticsPanel() {
   const listings = useClusterListings(cluster)
   const allListings = useClusterAllListings(cluster)
   const revenueThreshold = useAppStore((s) => s.revenueThreshold)
+  const setClusterConfidence = useAppStore((s) => s.setClusterConfidence)
 
   if (!cluster) {
     return <div className="analytics-panel analytics-panel--empty">Draw or select a cluster to see its breakdown.</div>
@@ -32,6 +34,8 @@ export function AnalyticsPanel() {
         <span className="analytics-panel__swatch" style={{ backgroundColor: cluster.color }} />
         <h3>{cluster.name}</h3>
       </div>
+
+      <ConfidencePicker value={cluster.confidence} onChange={(confidence) => setClusterConfidence(cluster.id, confidence)} />
 
       <div className="analytics-panel__stats">
         <div className="stat-tile">

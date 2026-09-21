@@ -331,6 +331,25 @@ button {
   margin: 0;
 }
 
+.confidence-picker {
+  display: flex;
+  gap: 6px;
+}
+
+.confidence-picker__option {
+  flex: 1;
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.confidence-picker__option--active {
+  color: white;
+}
+
 .analytics-panel__swatch {
   width: 10px;
   height: 10px;
