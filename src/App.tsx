@@ -33,9 +33,15 @@ function App() {
             <p>Upload a listings CSV to plot it on the map.</p>
           </div>
 
-          <ProjectSwitcher />
+          <div className="sidebar__section">
+            <h2>Step 1 · Select or Create a Project</h2>
+            <ProjectSwitcher />
+          </div>
 
-          <UploadButton />
+          <div className="sidebar__section">
+            <h2>Step 2 · Upload a CSV</h2>
+            <UploadButton />
+          </div>
 
           {hasDataset && (
             <>

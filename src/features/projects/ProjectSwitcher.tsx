@@ -11,6 +11,8 @@ export function ProjectSwitcher() {
 
   const [isEditing, setIsEditing] = useState(false)
   const [draftName, setDraftName] = useState(projectName)
+  const [isCreating, setIsCreating] = useState(false)
+  const [createDraftName, setCreateDraftName] = useState('')
   const [importError, setImportError] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -27,6 +29,21 @@ export function ProjectSwitcher() {
     setIsEditing(false)
   }
 
+  const startCreating = () => {
+    setCreateDraftName('')
+    setIsCreating(true)
+  }
+
+  const cancelCreating = () => setIsCreating(false)
+
+  // Only Enter actually creates a project — losing focus (a stray click elsewhere) just closes
+  // the input, since accidentally creating a project is worse than an unsaved rename draft.
+  const commitCreate = () => {
+    const name = createDraftName.trim()
+    setIsCreating(false)
+    void createNew(name || 'New Project')
+  }
+
   const handleImportFile = async (file: File) => {
     setImportError(null)
     try {
@@ -38,11 +55,32 @@ export function ProjectSwitcher() {
 
   if (!projectId) return null
 
-  const otherProjects = projects.filter((p) => p.id !== projectId)
+  const currentInList = projects.some((p) => p.id === projectId)
 
   return (
     <div className="project-switcher">
+      <select
+        className="project-switcher__select"
+        value={currentInList ? projectId : ''}
+        onChange={(e) => {
+          const id = e.target.value
+          if (id && id !== projectId) void switchTo(id)
+        }}
+      >
+        {!currentInList && (
+          <option value="" disabled>
+            Select Project
+          </option>
+        )}
+        {projects.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+
       <div className="project-switcher__row">
+        <span className="project-switcher__label">Project:</span>
         {isEditing ? (
           <input
             autoFocus
@@ -73,27 +111,25 @@ export function ProjectSwitcher() {
         </button>
       </div>
 
-      {otherProjects.length > 0 && (
-        <select
-          className="project-switcher__select"
-          value=""
-          onChange={(e) => {
-            if (e.target.value) void switchTo(e.target.value)
-          }}
-        >
-          <option value="">Switch project… ({otherProjects.length} other{otherProjects.length === 1 ? '' : 's'})</option>
-          {otherProjects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      )}
-
       <div className="project-switcher__actions">
-        <button type="button" onClick={() => void createNew()}>
-          + New Project
-        </button>
+        {isCreating ? (
+          <input
+            autoFocus
+            className="project-switcher__name-input"
+            placeholder="Project name"
+            value={createDraftName}
+            onChange={(e) => setCreateDraftName(e.target.value)}
+            onBlur={cancelCreating}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitCreate()
+              if (e.key === 'Escape') cancelCreating()
+            }}
+          />
+        ) : (
+          <button type="button" onClick={startCreating}>
+            + New
+          </button>
+        )}
         <button type="button" onClick={exportCurrent}>
           Export
         </button>
