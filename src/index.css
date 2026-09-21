@@ -1,11 +1,14 @@
 :root {
-  --bg: #f7f8fa;
+  /* Palette follows strsearch.com's brand: deep green + gold, on a warm off-white. */
+  --bg: #faf7f0;
   --panel-bg: #ffffff;
   --border: #e2e5eb;
   --text: #1a1d23;
   --text-muted: #6b7280;
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
+  --brand-dark: #124c3c;
+  --brand-dark-hover: #0e3c30;
+  --accent: #e8a654;
+  --accent-hover: #be8844;
   --danger: #dc2626;
   --radius: 8px;
   color-scheme: light;
