@@ -244,16 +244,31 @@ export function PolygonDraw() {
     drawRef.current?.changeMode('simple_select', { featureIds: activeClusterId ? [activeClusterId] : [] })
   }, [activeClusterId])
 
-  // Push confidence changes (e.g. from the analytics panel's picker) onto the already-drawn
-  // feature, so the polygon recolors immediately without waiting for a style switch. This
-  // goes through draw.add() rather than the seemingly-more-direct draw.setFeatureProperty():
-  // setFeatureProperty marks the feature dirty but never actually triggers a re-render (only
-  // add()/set() call store.render() internally) — the property changes but nothing repaints.
-  // add() on an existing id is safe here: it diffs properties/coordinates and updates in place.
+  // Keep Draw's own feature store in sync with the app store, which is the source of truth.
+  // Two directions:
+  //  - A cluster removed some other way than Draw's own trash button (e.g. the "Remove" button
+  //    in the sidebar's cluster list) only ever touches the app store — nothing tells Draw's
+  //    internal store to drop the feature, so the polygon would otherwise keep rendering on the
+  //    map until the user manually re-selected and deleted it there too. Diff Draw's features
+  //    against the current cluster ids and delete whatever's left over.
+  //  - Confidence changes (e.g. from the analytics panel's picker) get pushed onto the
+  //    already-drawn feature so the polygon recolors immediately without waiting for a style
+  //    switch. This goes through draw.add() rather than the seemingly-more-direct
+  //    draw.setFeatureProperty(): setFeatureProperty marks the feature dirty but never actually
+  //    triggers a re-render (only add()/set() call store.render() internally) — the property
+  //    changes but nothing repaints. add() on an existing id is safe: it diffs
+  //    properties/coordinates and updates in place.
   const clusters = useAppStore((s) => s.clusters)
   useEffect(() => {
     const draw = drawRef.current
     if (!draw) return
+
+    const clusterIds = new Set(clusters.map((c) => c.id))
+    for (const feature of draw.getAll().features) {
+      const id = String(feature.id)
+      if (!clusterIds.has(id)) draw.delete(id)
+    }
+
     for (const cluster of clusters) {
       if (draw.get(cluster.id)) draw.add(clusterToFeature(cluster))
     }
