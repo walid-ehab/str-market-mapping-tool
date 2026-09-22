@@ -512,6 +512,19 @@ button {
   color: var(--text-muted);
 }
 
+.cluster-notes__textarea {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  color: var(--text);
+  background: var(--panel-bg);
+}
+
 .chart-card {
   background: var(--bg);
   border-radius: var(--radius);
@@ -755,6 +768,25 @@ button {
 
 /* --- Report --- */
 
+.generate-report {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.generate-report__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.generate-report__hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .generate-report-button {
   background: var(--brand-dark);
   color: white;
@@ -880,6 +912,20 @@ button {
   border-radius: var(--radius);
   border: 1px solid var(--border);
   display: block;
+}
+
+.report-cluster__notes h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 0 0 4px;
+}
+
+.report-cluster__notes p {
+  margin: 0;
+  font-size: 13px;
+  white-space: pre-wrap;
 }
 
 .report-cluster__coords-header {

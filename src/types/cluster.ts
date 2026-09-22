@@ -11,4 +11,6 @@ export interface Cluster {
   /** Closed linear ring, [lng, lat] pairs, first === last. */
   ring: Position[]
   createdAt: number
+  /** Free-text comments for whoever reads the report — optional, defaults to '' for clusters saved before this field existed. */
+  notes: string
 }

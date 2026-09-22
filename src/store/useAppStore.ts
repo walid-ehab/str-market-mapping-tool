@@ -10,11 +10,13 @@ import type { Listing } from '@/types/listing'
 export const DEFAULT_REVENUE_THRESHOLD = 90000
 export const DEFAULT_MAP_STYLE_ID = 'carto-positron'
 
-/** Backfills confidence for clusters persisted before that field existed. */
-function withConfidence(clusters: Cluster[]): Cluster[] {
-  return clusters.map((c) =>
-    c.confidence ? c : { ...c, confidence: DEFAULT_CLUSTER_CONFIDENCE, color: CLUSTER_CONFIDENCE_COLORS[DEFAULT_CLUSTER_CONFIDENCE] },
-  )
+/** Backfills fields added after a cluster may have already been saved (confidence, notes) so old projects load without breaking. */
+function normalizeClusters(clusters: Cluster[]): Cluster[] {
+  return clusters.map((c) => ({
+    ...c,
+    ...(c.confidence ? null : { confidence: DEFAULT_CLUSTER_CONFIDENCE, color: CLUSTER_CONFIDENCE_COLORS[DEFAULT_CLUSTER_CONFIDENCE] }),
+    notes: c.notes ?? '',
+  }))
 }
 
 interface AppState {
@@ -63,6 +65,7 @@ interface AppState {
   updateClusterRing: (id: string, ring: Position[]) => void
   renameCluster: (id: string, name: string) => void
   setClusterConfidence: (id: string, confidence: ClusterConfidence) => void
+  setClusterNotes: (id: string, notes: string) => void
   removeCluster: (id: string) => void
   setActiveClusterId: (id: string | null) => void
 
@@ -139,6 +142,10 @@ export const useAppStore = create<AppState>((set) => ({
         c.id === id ? { ...c, confidence, color: CLUSTER_CONFIDENCE_COLORS[confidence] } : c,
       ),
     })),
+  setClusterNotes: (id, notes) =>
+    set((state) => ({
+      clusters: state.clusters.map((c) => (c.id === id ? { ...c, notes } : c)),
+    })),
   removeCluster: (id) =>
     set((state) => ({
       clusters: state.clusters.filter((c) => c.id !== id),
@@ -153,7 +160,7 @@ export const useAppStore = create<AppState>((set) => ({
       projectId: project.id,
       projectName: project.name,
       projectCreatedAt: project.createdAt,
-      clusters: withConfidence(project.clusters),
+      clusters: normalizeClusters(project.clusters),
       revenueThreshold: project.revenueThreshold,
       colorModeId: project.colorModeId,
       hiddenLegendEntries: project.hiddenLegendEntries ?? {},

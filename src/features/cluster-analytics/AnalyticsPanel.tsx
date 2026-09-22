@@ -1,3 +1,4 @@
+import { ClusterNotes } from '@/features/cluster-analytics/ClusterNotes'
 import { ClusterStatTiles } from '@/features/cluster-analytics/ClusterStatTiles'
 import { ConfidencePicker } from '@/features/clusters/ConfidencePicker'
 import { ClusterExportButtons } from '@/features/export/ExportButtons'
@@ -29,6 +30,8 @@ export function AnalyticsPanel() {
       <ConfidencePicker value={cluster.confidence} onChange={(confidence) => setClusterConfidence(cluster.id, confidence)} />
 
       <ClusterStatTiles stats={stats} revenueThreshold={revenueThreshold} />
+
+      <ClusterNotes cluster={cluster} />
 
       <ClusterExportButtons cluster={cluster} />
 
