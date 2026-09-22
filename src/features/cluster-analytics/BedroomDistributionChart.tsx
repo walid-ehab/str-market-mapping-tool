@@ -1,5 +1,5 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { BEDROOM_BUCKET_COLORS, BEDROOM_BUCKET_LABELS, BEDROOM_BUCKET_ORDER, bedroomBucket } from '@/lib/bedrooms'
+import { BEDROOM_BUCKET_COLORS, BEDROOM_BUCKET_ORDER, BEDROOM_BUCKET_SHORT_LABELS, bedroomBucket } from '@/lib/bedrooms'
 import type { EnrichedListing } from '@/types/listing'
 
 export function BedroomDistributionChart({ listings }: { listings: EnrichedListing[] }) {
@@ -10,7 +10,7 @@ export function BedroomDistributionChart({ listings }: { listings: EnrichedListi
   }
   const data = BEDROOM_BUCKET_ORDER.map((bucket) => ({
     bucket,
-    label: BEDROOM_BUCKET_LABELS[bucket],
+    label: BEDROOM_BUCKET_SHORT_LABELS[bucket],
     count: counts.get(bucket) ?? 0,
     color: BEDROOM_BUCKET_COLORS[bucket],
   }))
