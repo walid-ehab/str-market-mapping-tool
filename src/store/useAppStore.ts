@@ -4,6 +4,7 @@ import { defaultColorModeId } from '@/features/color-modes/registry'
 import { defaultFilterValues } from '@/features/filters/registry'
 import type { ProjectRecord, ProjectSummary } from '@/features/persistence/db'
 import { CLUSTER_CONFIDENCE_COLORS, DEFAULT_CLUSTER_CONFIDENCE, type ClusterConfidence } from '@/lib/clusterConfidence'
+import { DEFAULT_PROFESSIONAL_HOST_TYPES } from '@/lib/hostType'
 import type { Cluster } from '@/types/cluster'
 import type { Listing } from '@/types/listing'
 
@@ -44,6 +45,8 @@ interface AppState {
   hiddenLegendEntries: Record<string, string[]>
   filterValues: Record<string, unknown>
   mapStyleId: string
+  /** PROPERTY_HOST_TYPE values counted as "professionally hosted" — user-configurable, defaults to 6-20/21+ Units. */
+  professionalHostTypes: string[]
 
   clusters: Cluster[]
   activeClusterId: string | null
@@ -60,6 +63,7 @@ interface AppState {
   setFilterValue: (id: string, value: unknown) => void
   resetFilters: () => void
   setMapStyleId: (id: string) => void
+  toggleProfessionalHostType: (hostType: string) => void
 
   addCluster: (cluster: Cluster) => void
   updateClusterRing: (id: string, ring: Position[]) => void
@@ -96,6 +100,7 @@ export const useAppStore = create<AppState>((set) => ({
   hiddenLegendEntries: {},
   filterValues: defaultFilterValues(),
   mapStyleId: DEFAULT_MAP_STYLE_ID,
+  professionalHostTypes: DEFAULT_PROFESSIONAL_HOST_TYPES,
 
   clusters: [],
   activeClusterId: null,
@@ -126,6 +131,12 @@ export const useAppStore = create<AppState>((set) => ({
   setFilterValue: (id, value) => set((state) => ({ filterValues: { ...state.filterValues, [id]: value } })),
   resetFilters: () => set({ filterValues: defaultFilterValues() }),
   setMapStyleId: (id) => set({ mapStyleId: id }),
+  toggleProfessionalHostType: (hostType) =>
+    set((state) => ({
+      professionalHostTypes: state.professionalHostTypes.includes(hostType)
+        ? state.professionalHostTypes.filter((t) => t !== hostType)
+        : [...state.professionalHostTypes, hostType],
+    })),
 
   addCluster: (cluster) => set((state) => ({ clusters: [...state.clusters, cluster], activeClusterId: cluster.id })),
   updateClusterRing: (id, ring) =>
@@ -166,6 +177,7 @@ export const useAppStore = create<AppState>((set) => ({
       hiddenLegendEntries: project.hiddenLegendEntries ?? {},
       filterValues: project.filterValues,
       mapStyleId: project.mapStyleId,
+      professionalHostTypes: project.professionalHostTypes ?? DEFAULT_PROFESSIONAL_HOST_TYPES,
       activeClusterId: null,
       datasetFileName: null,
       datasetUploadedAt: null,
@@ -184,6 +196,7 @@ export const useAppStore = create<AppState>((set) => ({
       hiddenLegendEntries: {},
       filterValues: defaultFilterValues(),
       mapStyleId: DEFAULT_MAP_STYLE_ID,
+      professionalHostTypes: DEFAULT_PROFESSIONAL_HOST_TYPES,
       activeClusterId: null,
       datasetFileName: null,
       datasetUploadedAt: null,

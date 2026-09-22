@@ -766,6 +766,26 @@ button {
   border-radius: var(--radius) !important;
 }
 
+/* --- Professional host type settings --- */
+
+.host-type-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.host-type-settings__hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.host-type-settings__option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
 /* --- Report --- */
 
 .generate-report {

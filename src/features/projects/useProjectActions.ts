@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { defaultColorModeId } from '@/features/color-modes/registry'
 import { downloadTextFile } from '@/features/export/downloadFile'
 import { defaultFilterValues } from '@/features/filters/registry'
+import { DEFAULT_PROFESSIONAL_HOST_TYPES } from '@/lib/hostType'
 import {
   deleteProject,
   getProject,
@@ -30,6 +31,7 @@ function currentProjectRecord(): ProjectRecord | null {
     hiddenLegendEntries: s.hiddenLegendEntries,
     filterValues: s.filterValues,
     mapStyleId: s.mapStyleId,
+    professionalHostTypes: s.professionalHostTypes,
     lastDatasetFileName: s.datasetFileName,
   }
 }
@@ -69,6 +71,7 @@ export function useProjectActions() {
       hiddenLegendEntries: {},
       filterValues: defaultFilterValues(),
       mapStyleId: DEFAULT_MAP_STYLE_ID,
+      professionalHostTypes: DEFAULT_PROFESSIONAL_HOST_TYPES,
       lastDatasetFileName: null,
     })
     await refreshProjects()
@@ -115,6 +118,7 @@ export function useProjectActions() {
       hiddenLegendEntries: parsed.hiddenLegendEntries ?? {},
       filterValues: parsed.filterValues ?? defaultFilterValues(),
       mapStyleId: typeof parsed.mapStyleId === 'string' ? parsed.mapStyleId : DEFAULT_MAP_STYLE_ID,
+      professionalHostTypes: Array.isArray(parsed.professionalHostTypes) ? parsed.professionalHostTypes : DEFAULT_PROFESSIONAL_HOST_TYPES,
       lastDatasetFileName: typeof parsed.lastDatasetFileName === 'string' ? parsed.lastDatasetFileName : null,
     }
     await saveProject(project)

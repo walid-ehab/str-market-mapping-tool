@@ -6,6 +6,7 @@ import { ClusterList } from '@/features/clusters/ClusterList'
 import { AnalyticsPanel } from '@/features/cluster-analytics/AnalyticsPanel'
 import { ExportAllClustersButton } from '@/features/export/ExportButtons'
 import { FilterPanel } from '@/features/filters/FilterPanel'
+import { ProfessionalHostTypeSettings } from '@/features/host-type/ProfessionalHostTypeSettings'
 import { Legend } from '@/features/map/Legend'
 import { MapProvider } from '@/features/map/MapContext'
 import { MapView } from '@/features/map/MapView'
@@ -49,6 +50,10 @@ function App() {
                 <h2>Revenue Tiering</h2>
                 <ThresholdControl />
               </div>
+
+              <CollapsibleSection title="Professionally Hosted Definition" defaultOpen={false}>
+                <ProfessionalHostTypeSettings />
+              </CollapsibleSection>
 
               <CollapsibleSection title="Filters">
                 <FilterPanel />
