@@ -27,6 +27,15 @@ export function ProHostedChart({ listings }: { listings: EnrichedListing[] }) {
           <Tooltip formatter={(value, name) => [value, name]} />
         </PieChart>
       </ResponsiveContainer>
+      {/* Always-visible labels — the Tooltip above only shows on hover, which doesn't exist when printed. */}
+      <div className="chart-card__legend">
+        {data.map((entry) => (
+          <span key={entry.name} className="chart-card__legend-item">
+            <span className="chart-card__legend-swatch" style={{ backgroundColor: entry.color }} />
+            {entry.name}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }

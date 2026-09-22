@@ -543,6 +543,28 @@ button {
   text-align: center;
 }
 
+.chart-card__legend {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.chart-card__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.chart-card__legend-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
 /* --- Export --- */
 
 .export-buttons {
@@ -997,9 +1019,16 @@ button {
 }
 
 .report-cluster__charts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  /* flex-wrap, not CSS grid — Chromium fragments grid items across a print page break far less
+     reliably than flex/block children, leaving stray empty boxes behind (see break-inside rules
+     below, which rely on clean fragmentation to keep a card from being split mid-page). */
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+}
+
+.report-cluster__charts .chart-card {
+  flex: 1 1 220px;
 }
 
 @media print {
@@ -1041,7 +1070,30 @@ button {
     break-after: auto;
   }
 
+  /* Keep each of these whole — without this, a block taller than the remaining page space gets
+     sliced mid-element (a chart's title landing on one page and its bars/pie on the next). A
+     cluster can still span multiple printed pages; it just now breaks between these blocks
+     instead of through the middle of one. */
+  .report-cluster__header,
+  .report-cluster__snapshot,
+  .report-cluster__coords,
+  .chart-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
   .copy-button {
     display: none;
+  }
+
+  /* Recharts leaves this wrapper (its hover tooltip's container) permanently in the DOM,
+     inline-styled to visibility: hidden between hovers. Chromium's print/PDF pipeline doesn't
+     reliably honor visibility: hidden on an absolutely-positioned element here, so it paints
+     as a stray empty white box (its default .recharts-default-tooltip border/background) in
+     the top-left corner of every chart. display: none isn't subject to that bug, so force it
+     off outright — !important because the wrapper's own visibility is set inline, which would
+     otherwise outrank an unqualified rule here. */
+  .recharts-tooltip-wrapper {
+    display: none !important;
   }
 }
