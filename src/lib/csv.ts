@@ -35,13 +35,11 @@ function rowToListing(row: Record<string, string>, index: number): Listing | nul
   const longitude = toNumberOrNull(row.LONGITUDE)
   if (latitude === null || longitude === null) return null
 
-  const propertyHostType = row.PROPERTY_HOST_TYPE ?? ''
   return {
     id: row.STATIC_COMBINED_PROPERTY_ID || `row-${index}`,
     title: row.TITLE || 'Untitled listing',
     propertyType: row.PROPERTY_TYPE || '',
-    propertyHostType,
-    isProfessionallyHosted: propertyHostType !== '' && propertyHostType !== '1 Unit',
+    propertyHostType: row.PROPERTY_HOST_TYPE ?? '',
     cityName: row.CITY_NAME || '',
     stateName: row.STATE_NAME || '',
     neighborhoodName: row.NEIGHBORHOOD_NAME || '',

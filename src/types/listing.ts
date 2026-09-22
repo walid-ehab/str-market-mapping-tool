@@ -4,7 +4,6 @@ export interface Listing {
   title: string
   propertyType: string
   propertyHostType: string
-  isProfessionallyHosted: boolean
   cityName: string
   stateName: string
   neighborhoodName: string
@@ -29,8 +28,10 @@ export interface RevenueTiering {
   threshold: number
 }
 
-/** A Listing enriched with the currently-active revenue tiering. Recomputed whenever the threshold changes. */
+/** A Listing enriched with derived, setting-dependent fields. Recomputed whenever those settings change. */
 export interface EnrichedListing extends Listing {
   revenueTierId: RevenueTierId
   revenueTierLabel: string
+  /** Whether propertyHostType is one of the user's configured "professional" host types. */
+  isProfessionallyHosted: boolean
 }

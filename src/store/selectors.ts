@@ -8,18 +8,24 @@ import type { Cluster } from '@/types/cluster'
 import type { EnrichedListing } from '@/types/listing'
 import { useAppStore } from './useAppStore'
 
-/** Listings annotated with the currently-active revenue tiering. Recomputes only when inputs change. */
+/** Listings annotated with the currently-active revenue tiering and professional-host definition. Recomputes only when inputs change. */
 export function useEnrichedListings(): EnrichedListing[] {
   const listings = useAppStore((s) => s.listings)
   const threshold = useAppStore((s) => s.revenueThreshold)
+  const professionalHostTypes = useAppStore((s) => s.professionalHostTypes)
 
   return useMemo(() => {
     const tiering = computeRevenueTiering(listings, threshold)
     return listings.map((listing) => {
       const tierId = tiering.tierByListingId.get(listing.id) ?? 'below'
-      return { ...listing, revenueTierId: tierId, revenueTierLabel: tiering.labelByTier[tierId] }
+      return {
+        ...listing,
+        revenueTierId: tierId,
+        revenueTierLabel: tiering.labelByTier[tierId],
+        isProfessionallyHosted: professionalHostTypes.includes(listing.propertyHostType),
+      }
     })
-  }, [listings, threshold])
+  }, [listings, threshold, professionalHostTypes])
 }
 
 /**

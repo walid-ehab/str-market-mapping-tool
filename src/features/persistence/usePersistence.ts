@@ -84,6 +84,7 @@ export function usePersistence(): void {
   const hiddenLegendEntries = useAppStore((s) => s.hiddenLegendEntries)
   const filterValues = useAppStore((s) => s.filterValues)
   const mapStyleId = useAppStore((s) => s.mapStyleId)
+  const professionalHostTypes = useAppStore((s) => s.professionalHostTypes)
 
   const debounceRef = useRef<number | undefined>(undefined)
 
@@ -103,6 +104,7 @@ export function usePersistence(): void {
         hiddenLegendEntries,
         filterValues,
         mapStyleId,
+        professionalHostTypes,
         lastDatasetFileName: datasetFileName,
       }
       void saveProject(project).then(() => {
@@ -126,5 +128,6 @@ export function usePersistence(): void {
     hiddenLegendEntries,
     filterValues,
     mapStyleId,
+    professionalHostTypes,
   ])
 }

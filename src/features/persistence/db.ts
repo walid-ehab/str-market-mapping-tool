@@ -25,6 +25,8 @@ export interface ProjectRecord {
   hiddenLegendEntries: Record<string, string[]>
   filterValues: Record<string, unknown>
   mapStyleId: string
+  /** PROPERTY_HOST_TYPE values counted as "professionally hosted". Absent on projects saved before this setting existed. */
+  professionalHostTypes?: string[]
   /** Filename of the CSV last uploaded into this project — a re-upload hint, not the data itself. */
   lastDatasetFileName: string | null
 }
