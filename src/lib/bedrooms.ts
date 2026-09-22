@@ -12,6 +12,16 @@ export const BEDROOM_BUCKET_LABELS: Record<BedroomBucketId, string> = {
   '5+': '5+ Beds',
 }
 
+/** Shorter labels for tight spaces (e.g. bar chart axis ticks) where "X Bed(s)" gets clipped. */
+export const BEDROOM_BUCKET_SHORT_LABELS: Record<BedroomBucketId, string> = {
+  '0': 'Studio',
+  '1': '1 BR',
+  '2': '2 BR',
+  '3': '3 BR',
+  '4': '4 BR',
+  '5+': '5+ BR',
+}
+
 export const BEDROOM_BUCKET_COLORS: Record<BedroomBucketId, string> = {
   '0': '#B3CDE3',
   '1': '#8C96C6',
