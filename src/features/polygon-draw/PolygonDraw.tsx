@@ -173,6 +173,7 @@ export function PolygonDraw() {
         color: CLUSTER_CONFIDENCE_COLORS[DEFAULT_CLUSTER_CONFIDENCE],
         ring,
         createdAt: Date.now(),
+        notes: '',
       }
       useAppStore.getState().addCluster(cluster)
       // The confidence-sync effect below picks this up (addCluster changes `clusters`) and

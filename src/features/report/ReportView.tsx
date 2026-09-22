@@ -57,6 +57,13 @@ export function ReportView({ reportClusters, snapshots, revenueThreshold, datase
 
             <ClusterStatTiles stats={stats} revenueThreshold={revenueThreshold} variant="report" />
 
+            {cluster.notes.trim() && (
+              <div className="report-cluster__notes">
+                <h3>Notes</h3>
+                <p>{cluster.notes}</p>
+              </div>
+            )}
+
             <div className="report-cluster__coords">
               <div className="report-cluster__coords-header">
                 <h3>Polygon Boundary ({cluster.ring.length} points, GeoJSON)</h3>

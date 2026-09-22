@@ -15,21 +15,25 @@ export interface ReportCluster {
 }
 
 /**
- * All clusters, ranked confidence tier first (Great, then Good, then Maybe), and within a tier
- * by % of listings above the revenue threshold, descending — the same ordering used for the
- * printable report.
+ * Clusters ranked confidence tier first (Great, then Good, then Maybe), and within a tier by %
+ * of listings above the revenue threshold, descending — the same ordering used for the
+ * printable report. "Maybe" clusters are left out by default (the report's own default, per the
+ * assumption that a Maybe isn't confident enough to include in what's handed to a reader) —
+ * ranks are assigned after filtering, so they stay dense (no gaps) over whatever's left.
  */
-export function useReportClusters(): ReportCluster[] {
+export function useReportClusters(includeMaybe = false): ReportCluster[] {
   const clusters = useAppStore((s) => s.clusters)
   const enriched = useEnrichedListings()
   const filtered = useFilteredListings()
 
   return useMemo(() => {
-    const withStats = clusters.map((cluster) => {
-      const allListings = listingsInCluster(enriched, cluster)
-      const shownListings = listingsInCluster(filtered, cluster)
-      return { cluster, stats: computeClusterStats(allListings, shownListings), listings: shownListings }
-    })
+    const withStats = clusters
+      .filter((cluster) => includeMaybe || cluster.confidence !== 'maybe')
+      .map((cluster) => {
+        const allListings = listingsInCluster(enriched, cluster)
+        const shownListings = listingsInCluster(filtered, cluster)
+        return { cluster, stats: computeClusterStats(allListings, shownListings), listings: shownListings }
+      })
 
     withStats.sort((a, b) => {
       const tierDiff = CLUSTER_CONFIDENCE_ORDER.indexOf(a.cluster.confidence) - CLUSTER_CONFIDENCE_ORDER.indexOf(b.cluster.confidence)
@@ -38,5 +42,5 @@ export function useReportClusters(): ReportCluster[] {
     })
 
     return withStats.map((entry, index) => ({ ...entry, rank: index + 1 }))
-  }, [clusters, enriched, filtered])
+  }, [clusters, enriched, filtered, includeMaybe])
 }
