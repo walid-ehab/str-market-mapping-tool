@@ -22,6 +22,7 @@ export function AutoDetectClusters() {
 
   const [maxDistanceMiles, setMaxDistanceMiles] = useState(DEFAULT_AUTO_CLUSTER_OPTIONS.maxDistanceMiles)
   const [minListings, setMinListings] = useState(DEFAULT_AUTO_CLUSTER_OPTIONS.minListings)
+  const [bufferMiles, setBufferMiles] = useState(DEFAULT_AUTO_CLUSTER_OPTIONS.bufferMiles)
   const [isRunning, setIsRunning] = useState(false)
   const [lastResultCount, setLastResultCount] = useState<number | null>(null)
   const lastBatchIds = useRef<string[]>([])
@@ -46,7 +47,7 @@ export function AutoDetectClusters() {
       const candidateListings = aboveThreshold.filter((l) => !coveredIds.has(l.id))
 
       const baseCount = clusterCount - idsToRemove.length
-      const detected = detectClusters(candidateListings, { maxDistanceMiles, minListings }, baseCount)
+      const detected = detectClusters(candidateListings, { maxDistanceMiles, minListings, bufferMiles }, baseCount)
       addClusters(detected)
       lastBatchIds.current = detected.map((c) => c.id)
       setLastResultCount(detected.length)
@@ -85,6 +86,20 @@ export function AutoDetectClusters() {
             step={1}
             value={minListings}
             onChange={(e) => setMinListings(Math.max(2, Number(e.target.value) || 2))}
+          />
+        </div>
+      </div>
+
+      <div className="filter-panel__section">
+        <div className="filter-panel__label">Boundary padding ({bufferMiles.toFixed(2)} mi)</div>
+        <div className="filter-control__row">
+          <input
+            type="range"
+            min={0}
+            max={0.5}
+            step={0.01}
+            value={bufferMiles}
+            onChange={(e) => setBufferMiles(Number(e.target.value))}
           />
         </div>
       </div>
