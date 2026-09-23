@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { listingsInCluster } from '@/lib/geo'
 import { DEFAULT_AUTO_CLUSTER_OPTIONS, detectClusters } from '@/lib/autoCluster'
 import { useAppStore } from '@/store/useAppStore'
 
@@ -6,7 +7,11 @@ import { useAppStore } from '@/store/useAppStore'
  * Runs DBSCAN over listings above the revenue threshold to propose clusters, which land in the
  * normal cluster list — reviewable and editable exactly like a hand-drawn polygon. Clicking the
  * button again replaces the previous auto-detected batch (tracked only for this component's
- * lifetime) instead of piling duplicates on top of it; manually-drawn clusters are never touched.
+ * lifetime) instead of piling duplicates on top of it — except any cluster the user has already
+ * promoted to "Good" or "Great" confidence, which is left alone (neither deleted nor redrawn
+ * over): its listings are excluded from the next detection pass too, so a fresh "Maybe" duplicate
+ * never gets proposed directly on top of a cluster that's already been reviewed and approved.
+ * Manually-drawn clusters are never touched regardless of confidence.
  */
 export function AutoDetectClusters() {
   const listings = useAppStore((s) => s.listings)
@@ -30,9 +35,18 @@ export function AutoDetectClusters() {
     setLastResultCount(null)
     // Let the "Detecting…" state paint before the (synchronous) clustering pass blocks the main thread.
     requestAnimationFrame(() => {
-      removeClusters(lastBatchIds.current)
-      const baseCount = clusterCount - lastBatchIds.current.length
-      const detected = detectClusters(aboveThreshold, { maxDistanceMiles, minListings }, baseCount)
+      const currentClusters = useAppStore.getState().clusters
+      const idsToRemove = lastBatchIds.current.filter((id) => currentClusters.find((c) => c.id === id)?.confidence === 'maybe')
+      removeClusters(idsToRemove)
+
+      // Never propose a new cluster over ground a reviewed (Good/Great) cluster already covers —
+      // whether it came from a previous auto-detect run or was drawn by hand.
+      const keptClusters = currentClusters.filter((c) => c.confidence !== 'maybe')
+      const coveredIds = new Set(keptClusters.flatMap((c) => listingsInCluster(aboveThreshold, c).map((l) => l.id)))
+      const candidateListings = aboveThreshold.filter((l) => !coveredIds.has(l.id))
+
+      const baseCount = clusterCount - idsToRemove.length
+      const detected = detectClusters(candidateListings, { maxDistanceMiles, minListings }, baseCount)
       addClusters(detected)
       lastBatchIds.current = detected.map((c) => c.id)
       setLastResultCount(detected.length)
@@ -87,7 +101,7 @@ export function AutoDetectClusters() {
         <p className="auto-cluster__hint">
           {lastResultCount === 0
             ? 'No dense groups found — try loosening sensitivity or lowering min listings.'
-            : `Added ${lastResultCount} cluster${lastResultCount === 1 ? '' : 's'}, set to "Maybe" — review and edit below. Running again replaces this batch.`}
+            : `Added ${lastResultCount} cluster${lastResultCount === 1 ? '' : 's'}, set to "Maybe" — review and edit below. Running again replaces unreviewed clusters; anything you've marked "Good" or "Great" is left alone.`}
         </p>
       )}
     </div>
