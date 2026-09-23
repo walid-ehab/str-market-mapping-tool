@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { CollapsibleSection } from '@/components/CollapsibleSection'
 import { UploadButton } from '@/features/csv-upload/UploadButton'
 import { ClusterList } from '@/features/clusters/ClusterList'
+import { DeleteAllClustersButton } from '@/features/clusters/DeleteAllClustersButton'
 import { AnalyticsPanel } from '@/features/cluster-analytics/AnalyticsPanel'
 import { AutoDetectClusters } from '@/features/auto-cluster/AutoDetectClusters'
 import { ExportAllClustersButton } from '@/features/export/ExportButtons'
@@ -67,7 +68,10 @@ function App() {
               <div className="sidebar__section sidebar__section--grow">
                 <div className="sidebar__section-header">
                   <h2>Clusters</h2>
-                  <ExportAllClustersButton />
+                  <div className="sidebar__section-header-actions">
+                    <ExportAllClustersButton />
+                    <DeleteAllClustersButton />
+                  </div>
                 </div>
                 <ClusterList />
                 <GenerateReportButton />

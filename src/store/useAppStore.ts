@@ -73,6 +73,9 @@ interface AppState {
   setClusterConfidence: (id: string, confidence: ClusterConfidence) => void
   setClusterNotes: (id: string, notes: string) => void
   removeCluster: (id: string) => void
+  /** Removes several clusters at once (e.g. replacing a previous auto-detect batch) in a single update. */
+  removeClusters: (ids: string[]) => void
+  removeAllClusters: () => void
   setActiveClusterId: (id: string | null) => void
 
   setProjects: (projects: ProjectSummary[]) => void
@@ -165,6 +168,15 @@ export const useAppStore = create<AppState>((set) => ({
       clusters: state.clusters.filter((c) => c.id !== id),
       activeClusterId: state.activeClusterId === id ? null : state.activeClusterId,
     })),
+  removeClusters: (ids) =>
+    set((state) => {
+      const idSet = new Set(ids)
+      return {
+        clusters: state.clusters.filter((c) => !idSet.has(c.id)),
+        activeClusterId: state.activeClusterId && idSet.has(state.activeClusterId) ? null : state.activeClusterId,
+      }
+    }),
+  removeAllClusters: () => set({ clusters: [], activeClusterId: null }),
   setActiveClusterId: (id) => set({ activeClusterId: id }),
 
   setProjects: (projects) => set({ projects }),

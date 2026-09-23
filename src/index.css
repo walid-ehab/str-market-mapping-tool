@@ -608,6 +608,19 @@ button {
   font-size: 12px;
 }
 
+.sidebar__section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.delete-all-clusters {
+  border: none;
+  background: none;
+  color: var(--danger);
+  font-size: 12px;
+}
+
 /* --- Map --- */
 
 .map-pane {
