@@ -14,21 +14,22 @@ export interface AutoClusterOptions {
   maxDistanceMiles: number
   /** Minimum listings required for a group to become a cluster; smaller/sparser groups are dropped as noise. */
   minListings: number
+  /** Pad (miles) around the hull so an edge listing doesn't sit exactly on the drawn boundary line. */
+  bufferMiles: number
 }
 
 export const DEFAULT_AUTO_CLUSTER_OPTIONS: AutoClusterOptions = {
   maxDistanceMiles: 1,
   minListings: 8,
+  bufferMiles: 0.15,
 }
 
-// A small pad around the hull so listings don't sit exactly on the drawn boundary line.
-const HULL_BUFFER_MILES = 0.15
 // Above this edge length, concave() starts leaving big empty notches uncarved — past that it's
 // no tighter than a convex hull, so just use the (cheaper, always-valid) convex hull instead.
 const MAX_CONCAVE_EDGE_MILES = 2
 
 /** Builds a single polygon ring hugging a set of points — concave hull when it succeeds and stays a simple Polygon, convex hull otherwise. */
-function hullRing(coords: Position[]): Position[] | null {
+function hullRing(coords: Position[], bufferMiles: number): Position[] | null {
   const points = featureCollection(coords.map((c) => point(c)))
 
   let hull: Feature<Polygon> | null = null
@@ -40,8 +41,9 @@ function hullRing(coords: Position[]): Position[] | null {
   }
   if (!hull) hull = convex(points)
   if (!hull) return null
+  if (bufferMiles <= 0) return hull.geometry.coordinates[0]
 
-  const buffered = buffer(hull, HULL_BUFFER_MILES, { units: 'miles' })
+  const buffered = buffer(hull, bufferMiles, { units: 'miles' })
   if (buffered && buffered.geometry.type === 'Polygon') return buffered.geometry.coordinates[0]
   return hull.geometry.coordinates[0]
 }
@@ -73,7 +75,7 @@ export function detectClusters(listings: Listing[], options: AutoClusterOptions,
   const clusters: Cluster[] = []
   let nextNumber = existingClusterCount
   for (const coords of coordsByCluster.values()) {
-    const ring = hullRing(coords)
+    const ring = hullRing(coords, options.bufferMiles)
     if (!ring) continue
     nextNumber += 1
     clusters.push({
