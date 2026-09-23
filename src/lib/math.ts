@@ -14,3 +14,13 @@ export function minMax(values: number[]): { min: number; max: number } | null {
   }
   return { min, max }
 }
+
+/** Linear-interpolation quantile, matching numpy/pandas' default 'linear' method. `sortedValues` must already be sorted ascending. */
+export function quantile(sortedValues: number[], q: number): number {
+  if (sortedValues.length === 0) return 0
+  const pos = (sortedValues.length - 1) * q
+  const base = Math.floor(pos)
+  const rest = pos - base
+  const next = sortedValues[base + 1]
+  return next === undefined ? sortedValues[base] : sortedValues[base] + rest * (next - sortedValues[base])
+}
