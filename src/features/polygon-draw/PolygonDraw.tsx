@@ -245,19 +245,24 @@ export function PolygonDraw() {
   }, [activeClusterId])
 
   // Keep Draw's own feature store in sync with the app store, which is the source of truth.
-  // Two directions:
+  // Three directions:
   //  - A cluster removed some other way than Draw's own trash button (e.g. the "Remove" button
   //    in the sidebar's cluster list) only ever touches the app store — nothing tells Draw's
   //    internal store to drop the feature, so the polygon would otherwise keep rendering on the
   //    map until the user manually re-selected and deleted it there too. Diff Draw's features
   //    against the current cluster ids and delete whatever's left over.
+  //  - A cluster added some other way than Draw's own polygon tool (e.g. auto-detected clusters,
+  //    added straight to the app store) never existed in Draw's feature store to begin with, so
+  //    it needs the same draw.add() a hand-drawn polygon gets for free the moment Draw creates it.
   //  - Confidence changes (e.g. from the analytics panel's picker) get pushed onto the
   //    already-drawn feature so the polygon recolors immediately without waiting for a style
   //    switch. This goes through draw.add() rather than the seemingly-more-direct
   //    draw.setFeatureProperty(): setFeatureProperty marks the feature dirty but never actually
   //    triggers a re-render (only add()/set() call store.render() internally) — the property
-  //    changes but nothing repaints. add() on an existing id is safe: it diffs
-  //    properties/coordinates and updates in place.
+  //    changes but nothing repaints.
+  //  add() on any id, new or existing, is safe: it inserts if missing, and diffs
+  //  properties/coordinates and updates in place otherwise — so one unconditional loop covers
+  //  both the "add" and "update" directions.
   const clusters = useAppStore((s) => s.clusters)
   useEffect(() => {
     const draw = drawRef.current
@@ -270,7 +275,7 @@ export function PolygonDraw() {
     }
 
     for (const cluster of clusters) {
-      if (draw.get(cluster.id)) draw.add(clusterToFeature(cluster))
+      draw.add(clusterToFeature(cluster))
     }
   }, [clusters])
 

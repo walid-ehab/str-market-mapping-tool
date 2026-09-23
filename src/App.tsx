@@ -4,6 +4,7 @@ import { CollapsibleSection } from '@/components/CollapsibleSection'
 import { UploadButton } from '@/features/csv-upload/UploadButton'
 import { ClusterList } from '@/features/clusters/ClusterList'
 import { AnalyticsPanel } from '@/features/cluster-analytics/AnalyticsPanel'
+import { AutoDetectClusters } from '@/features/auto-cluster/AutoDetectClusters'
 import { ExportAllClustersButton } from '@/features/export/ExportButtons'
 import { FilterPanel } from '@/features/filters/FilterPanel'
 import { ProfessionalHostTypeSettings } from '@/features/host-type/ProfessionalHostTypeSettings'
@@ -57,6 +58,10 @@ function App() {
 
               <CollapsibleSection title="Filters">
                 <FilterPanel />
+              </CollapsibleSection>
+
+              <CollapsibleSection title="Auto-Detect Clusters" defaultOpen={false}>
+                <AutoDetectClusters />
               </CollapsibleSection>
 
               <div className="sidebar__section sidebar__section--grow">
