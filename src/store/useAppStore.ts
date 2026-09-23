@@ -66,6 +66,8 @@ interface AppState {
   toggleProfessionalHostType: (hostType: string) => void
 
   addCluster: (cluster: Cluster) => void
+  /** Appends several clusters at once (e.g. from auto-detection) without re-picking activeClusterId per cluster. */
+  addClusters: (clusters: Cluster[]) => void
   updateClusterRing: (id: string, ring: Position[]) => void
   renameCluster: (id: string, name: string) => void
   setClusterConfidence: (id: string, confidence: ClusterConfidence) => void
@@ -139,6 +141,7 @@ export const useAppStore = create<AppState>((set) => ({
     })),
 
   addCluster: (cluster) => set((state) => ({ clusters: [...state.clusters, cluster], activeClusterId: cluster.id })),
+  addClusters: (newClusters) => set((state) => ({ clusters: [...state.clusters, ...newClusters] })),
   updateClusterRing: (id, ring) =>
     set((state) => ({
       clusters: state.clusters.map((c) => (c.id === id ? { ...c, ring } : c)),
