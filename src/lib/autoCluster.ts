@@ -2,7 +2,8 @@ import { buffer } from '@turf/buffer'
 import { clustersDbscan } from '@turf/clusters-dbscan'
 import { concave } from '@turf/concave'
 import { convex } from '@turf/convex'
-import { featureCollection, point } from '@turf/helpers'
+import { featureCollection, point, polygon } from '@turf/helpers'
+import { simplify } from '@turf/simplify'
 import type { Feature, Polygon, Position } from 'geojson'
 import { v4 as uuidv4 } from 'uuid'
 import { CLUSTER_CONFIDENCE_COLORS, DEFAULT_CLUSTER_CONFIDENCE } from '@/lib/clusterConfidence'
@@ -16,20 +17,23 @@ export interface AutoClusterOptions {
   minListings: number
   /** Pad (miles) around the hull so an edge listing doesn't sit exactly on the drawn boundary line. */
   bufferMiles: number
+  /** How aggressively to cut vertices from the drawn boundary afterward, so it's easier to hand-edit — 0 disables it. */
+  simplifyToleranceMiles: number
 }
 
 export const DEFAULT_AUTO_CLUSTER_OPTIONS: AutoClusterOptions = {
   maxDistanceMiles: 1,
   minListings: 8,
   bufferMiles: 0.15,
+  simplifyToleranceMiles: 0.05,
 }
 
 // Above this edge length, concave() starts leaving big empty notches uncarved — past that it's
 // no tighter than a convex hull, so just use the (cheaper, always-valid) convex hull instead.
 const MAX_CONCAVE_EDGE_MILES = 2
 
-/** Builds a single polygon ring hugging a set of points — concave hull when it succeeds and stays a simple Polygon, convex hull otherwise. */
-function hullRing(coords: Position[], bufferMiles: number): Position[] | null {
+/** Builds the raw hull ring for a point cloud — concave when it succeeds and stays a simple Polygon, convex otherwise — then pads it. */
+function rawHullRing(coords: Position[], bufferMiles: number): Position[] | null {
   const points = featureCollection(coords.map((c) => point(c)))
 
   let hull: Feature<Polygon> | null = null
@@ -46,6 +50,27 @@ function hullRing(coords: Position[], bufferMiles: number): Position[] | null {
   const buffered = buffer(hull, bufferMiles, { units: 'miles' })
   if (buffered && buffered.geometry.type === 'Polygon') return buffered.geometry.coordinates[0]
   return hull.geometry.coordinates[0]
+}
+
+// simplify()'s tolerance is in the geometry's own coordinate units (degrees of lat/lng), not a
+// real-world distance — this is a rough conversion good enough for a UI slider about "how
+// aggressively to cut vertices," not one that needs geodetic precision.
+const MILES_PER_DEGREE = 69
+
+/** Runs Douglas-Peucker simplification on a ring to cut vertices — a concave hull can otherwise carry a jag for every little notch in the point cloud, which is tedious to hand-edit afterward. */
+function simplifyRing(ring: Position[], toleranceMiles: number): Position[] {
+  if (toleranceMiles <= 0) return ring
+  const simplified = simplify(polygon([ring]), { tolerance: toleranceMiles / MILES_PER_DEGREE, highQuality: true })
+  const simplifiedRing = simplified.geometry.coordinates[0]
+  // A linear ring needs at least 4 positions (3 distinct vertices + closing point) — over-aggressive
+  // simplification of a small/thin hull can collapse it past that, so fall back to the unsimplified ring.
+  return simplifiedRing.length >= 4 ? simplifiedRing : ring
+}
+
+/** Builds a single, hand-editable polygon ring hugging a set of points. */
+function hullRing(coords: Position[], bufferMiles: number, simplifyToleranceMiles: number): Position[] | null {
+  const ring = rawHullRing(coords, bufferMiles)
+  return ring ? simplifyRing(ring, simplifyToleranceMiles) : null
 }
 
 /**
@@ -75,7 +100,7 @@ export function detectClusters(listings: Listing[], options: AutoClusterOptions,
   const clusters: Cluster[] = []
   let nextNumber = existingClusterCount
   for (const coords of coordsByCluster.values()) {
-    const ring = hullRing(coords, options.bufferMiles)
+    const ring = hullRing(coords, options.bufferMiles, options.simplifyToleranceMiles)
     if (!ring) continue
     nextNumber += 1
     clusters.push({
