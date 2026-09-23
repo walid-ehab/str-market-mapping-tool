@@ -1,5 +1,5 @@
 import { formatK } from '@/lib/format'
-import { minMax } from '@/lib/math'
+import { minMax, quantile } from '@/lib/math'
 import type { Listing, RevenueTierId, RevenueTiering } from '@/types/listing'
 
 export const REVENUE_TIER_ORDER: RevenueTierId[] = ['below', 'q1', 'q2', 'q3', 'q4']
@@ -10,16 +10,6 @@ export const REVENUE_TIER_COLORS: Record<RevenueTierId, string> = {
   q2: '#FD8D3C',
   q3: '#E31A1C',
   q4: '#800026',
-}
-
-/** Linear-interpolation quantile, matching numpy/pandas' default 'linear' method. */
-function quantile(sortedValues: number[], q: number): number {
-  if (sortedValues.length === 0) return 0
-  const pos = (sortedValues.length - 1) * q
-  const base = Math.floor(pos)
-  const rest = pos - base
-  const next = sortedValues[base + 1]
-  return next === undefined ? sortedValues[base] : sortedValues[base] + rest * (next - sortedValues[base])
 }
 
 /**

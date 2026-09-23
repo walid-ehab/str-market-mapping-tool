@@ -565,6 +565,21 @@ button {
   flex-shrink: 0;
 }
 
+.chart-tooltip {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.chart-tooltip__title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
 /* --- Export --- */
 
 .export-buttons {
