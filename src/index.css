@@ -587,16 +587,21 @@ button {
   gap: 8px;
 }
 
-.export-buttons button {
+.export-buttons button,
+.export-buttons a {
   flex: 1;
   border: 1px solid var(--border);
   background: var(--panel-bg);
   border-radius: var(--radius);
   padding: 6px 8px;
   font-size: 12px;
+  color: var(--text);
+  text-decoration: none;
+  text-align: center;
 }
 
-.export-buttons button:hover {
+.export-buttons button:hover,
+.export-buttons a:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
