@@ -1,5 +1,7 @@
 import { clusterToLatLngList, clustersToGeoJsonCollection } from '@/lib/exportPolygon'
+import { ringBounds } from '@/lib/geo'
 import { useAppStore } from '@/store/useAppStore'
+import { buildZillowSearchUrl } from '@/lib/zillowSearch'
 import type { Cluster } from '@/types/cluster'
 import { downloadTextFile } from './downloadFile'
 
@@ -8,6 +10,8 @@ function slugify(name: string): string {
 }
 
 export function ClusterExportButtons({ cluster }: { cluster: Cluster }) {
+  const bounds = ringBounds(cluster.ring)
+
   return (
     <div className="export-buttons">
       <button
@@ -29,6 +33,11 @@ export function ClusterExportButtons({ cluster }: { cluster: Cluster }) {
       >
         Export Lat/Lng
       </button>
+      {bounds && (
+        <a href={buildZillowSearchUrl(bounds)} target="_blank" rel="noopener noreferrer">
+          Search on Zillow
+        </a>
+      )}
     </div>
   )
 }
