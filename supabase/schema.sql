@@ -4,12 +4,12 @@
 -- Re-running is safe: every statement is idempotent (create-if-not-exists / drop-then-create).
 --
 -- Two tables:
---   listings       Already exists in this project — a near-verbatim load of the Snowflake
---                  CSV export (876K+ rows, multiple states), column names lowercased.
---                  The block below documents its real shape and adds a lookup index; it does
---                  NOT alter or recreate the table (create table if not exists is a no-op
---                  here), so no constraint declared below is actually enforced unless it
---                  already was.
+--   listings       Already exists in this project as a VIEW (confirmed by Postgres refusing
+--                  to index it directly — "not supported for views") — a near-verbatim load
+--                  of the Snowflake CSV export (876K+ rows, multiple states), column names
+--                  lowercased. The block below documents its shape for reference only; the
+--                  `create table if not exists` is a no-op (a relation with this name
+--                  already exists), so no constraint declared below is actually enforced.
 --   state_projects Does not exist yet. One row per US state: that state's saved clusters +
 --                  map/report settings — the direct analog of today's per-project IndexedDB
 --                  record, keyed by state instead of an arbitrary project id.
@@ -72,8 +72,21 @@ create table if not exists public.listings (
 );
 
 -- The app's core query shape is "give me this state's listings" — this index makes that
--- fast across 876K+ rows. Safe to add regardless of whether the table pre-existed.
-create index if not exists listings_state_name_idx on public.listings (state_name);
+-- fast across 876K+ rows. Guarded because public.listings turned out to be a VIEW in this
+-- project, not an ordinary table — Postgres can't index a view directly. If it's a plain
+-- view over a real base table, add the index on that base table instead (run
+-- `select pg_get_viewdef('public.listings'::regclass, true);` to see what it's built from).
+do $$
+begin
+  if exists (
+    select 1 from pg_class
+    where relname = 'listings' and relnamespace = 'public'::regnamespace and relkind = 'r'
+  ) then
+    execute 'create index if not exists listings_state_name_idx on public.listings (state_name)';
+  else
+    raise notice 'Skipping index: public.listings is not an ordinary table (it is a view) — index its underlying base table instead.';
+  end if;
+end $$;
 
 alter table public.listings enable row level security;
 
