@@ -51,11 +51,6 @@ const DRAW_DEFAULT_COLOR = '#3bb2d0'
 // fixed absolute zoom threshold would trigger inconsistently across a tiny state (Rhode Island)
 // vs. a huge one (Texas), so this is relative to each state's own fitBounds zoom instead.
 const ZOOM_OUT_MARGIN = 2
-// Roughly the continental US — the same extent UsStatesMap's default view shows.
-const US_BOUNDS: [[number, number], [number, number]] = [
-  [-125, 24],
-  [-66, 50],
-]
 
 /**
  * Recolors Draw's polygon fill/outline by the cluster's confidence instead of Draw's single
@@ -157,11 +152,12 @@ export function PolygonDraw() {
     }
 
     // Zooming out past the state's own natural fit level, by a decent margin, reads as "I'm
-    // done with this state" — mirrors the landing map's own zoom-in transition, in reverse:
-    // animate out to the full US extent on this same map, then swap views once that settles.
-    // Suppressed mid-draw (drawing a new polygon or editing an existing one's vertices) so
-    // zooming out to see more context while drawing doesn't unexpectedly discard the in-progress
-    // shape.
+    // done with this state" — mirrors the landing map's own zoom-in transition, in reverse.
+    // Switches straight into the landing map at the exact camera the user just zoomed out to
+    // (no extra fly-out animation first, which read as a jarring double-transition), so the
+    // whole thing plays as one continuous zoom rather than a snap-then-drift. Suppressed
+    // mid-draw (drawing a new polygon or editing an existing one's vertices) so zooming out to
+    // see more context while drawing doesn't unexpectedly discard the in-progress shape.
     const handleZoomEnd = () => {
       if (drawRef.current?.getMode() !== 'simple_select') return
       const bounds = datasetBounds(useAppStore.getState().listings)
@@ -171,8 +167,9 @@ export function PolygonDraw() {
       if (map.getZoom() >= camera.zoom - ZOOM_OUT_MARGIN) return
 
       map.off('zoomend', handleZoomEnd)
-      map.fitBounds(US_BOUNDS, { padding: 40, duration: 600 })
-      map.once('moveend', () => useAppStore.getState().clearSelectedState())
+      const center = map.getCenter()
+      useAppStore.getState().setPendingLandingCamera({ center: [center.lng, center.lat], zoom: map.getZoom() })
+      useAppStore.getState().clearSelectedState()
     }
     map.on('zoomend', handleZoomEnd)
 
