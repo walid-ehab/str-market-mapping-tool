@@ -32,6 +32,7 @@ declare module '@mapbox/mapbox-gl-draw' {
     delete(ids: string | string[]): this
     deleteAll(): this
     changeMode(mode: string, options?: { featureIds?: string[] }): this
+    getMode(): string
     setFeatureProperty(featureId: string, property: string, value: unknown): this
   }
 }
