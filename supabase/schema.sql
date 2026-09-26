@@ -73,8 +73,17 @@ create table if not exists public.state_projects (
   filter_values jsonb not null default '{}'::jsonb,
   map_style_id text not null default 'default',
   professional_host_types jsonb,
+  -- Manually toggleable "I've looked at this state" flag, also set true automatically the
+  -- moment a cluster is marked Good/Great (never by drawing or auto-detecting a Maybe cluster —
+  -- see setClusterConfidence in useAppStore.ts). Powers the landing map's unexplored/explored
+  -- color distinction for states with no Good/Great clusters yet.
+  explored boolean not null default false,
   updated_at timestamptz not null default now()
 );
+
+-- Added after the table already existed in some projects — safe no-op if the column is
+-- already there (e.g. on a project created from this file after this line was added).
+alter table public.state_projects add column if not exists explored boolean not null default false;
 
 alter table public.state_projects enable row level security;
 

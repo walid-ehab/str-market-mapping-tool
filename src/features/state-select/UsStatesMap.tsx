@@ -5,6 +5,8 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import '@/features/map/setupMapWorker'
 import { useEffect, useRef, useState } from 'react'
 import { getMapStyle } from '@/features/map/mapStyles'
+import { listStateProjectSummaries, type StateProjectSummary } from '@/features/persistence/supabaseStateProjects'
+import { colorForStateSummary, GOOD_GREAT_BUCKETS, EXPLORED_COLOR, UNEXPLORED_COLOR, statusLabelForStateSummary } from '@/lib/stateExploreColors'
 import { useAppStore } from '@/store/useAppStore'
 
 const STATES_SOURCE_ID = 'us-states'
@@ -14,9 +16,24 @@ const STATES_LINE_LAYER_ID = 'us-states-line'
 const DEFAULT_CENTER: [number, number] = [-98.5795, 39.8283]
 const DEFAULT_ZOOM = 3.4
 
-type StateFeature = Feature<Polygon | MultiPolygon, { name: string }>
+type StateProperties = { name: string; fillColor: string }
+type StateFeature = Feature<Polygon | MultiPolygon, StateProperties>
 
-function addStatesLayers(map: MapLibreMap, data: FeatureCollection<Polygon | MultiPolygon, { name: string }>) {
+/** Merges each feature's saved-progress summary in as a plain property, so fill-color can just read it back — no MapLibre expression needs to know about explored/counts. */
+function withFillColors(
+  data: FeatureCollection<Polygon | MultiPolygon, { name: string }>,
+  summaries: Map<string, StateProjectSummary>,
+): FeatureCollection<Polygon | MultiPolygon, StateProperties> {
+  return {
+    ...data,
+    features: data.features.map((f) => ({
+      ...f,
+      properties: { ...f.properties, fillColor: colorForStateSummary(summaries.get(f.properties.name)) },
+    })),
+  }
+}
+
+function addStatesLayers(map: MapLibreMap, data: FeatureCollection<Polygon | MultiPolygon, StateProperties>) {
   if (!map.getSource(STATES_SOURCE_ID)) {
     map.addSource(STATES_SOURCE_ID, { type: 'geojson', data, promoteId: 'name' })
   }
@@ -26,8 +43,8 @@ function addStatesLayers(map: MapLibreMap, data: FeatureCollection<Polygon | Mul
       type: 'fill',
       source: STATES_SOURCE_ID,
       paint: {
-        'fill-color': '#124c3c',
-        'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.55, 0.25],
+        'fill-color': ['get', 'fillColor'],
+        'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.95, 0.75],
       },
     })
   }
@@ -55,7 +72,10 @@ export function UsStatesMap() {
   const mapRef = useRef<MapLibreMap | null>(null)
   const hoveredIdRef = useRef<string | null>(null)
   const isTransitioningRef = useRef(false)
-  const [hoveredStateName, setHoveredStateName] = useState<string | null>(null)
+  // Populated once the summaries fetch resolves — read by the hover handler below, which is
+  // registered before that happens, so a ref (not state) avoids re-subscribing map listeners.
+  const summariesRef = useRef<Map<string, StateProjectSummary>>(new Map())
+  const [hoveredState, setHoveredState] = useState<{ name: string; statusLabel: string } | null>(null)
   const selectState = useAppStore((s) => s.selectState)
 
   useEffect(() => {
@@ -72,11 +92,18 @@ export function UsStatesMap() {
     let cancelled = false
 
     map.on('load', () => {
-      fetch(`${import.meta.env.BASE_URL}data/us-states.geo.json`)
-        .then((res) => res.json())
-        .then((data: FeatureCollection<Polygon | MultiPolygon, { name: string }>) => {
+      Promise.all([
+        fetch(`${import.meta.env.BASE_URL}data/us-states.geo.json`).then(
+          (res) => res.json() as Promise<FeatureCollection<Polygon | MultiPolygon, { name: string }>>,
+        ),
+        // Missing progress data shouldn't block the map from rendering at all — every state
+        // just falls back to unexplored, same as a state that's genuinely never been touched.
+        listStateProjectSummaries().catch(() => new Map<string, StateProjectSummary>()),
+      ])
+        .then(([data, summaries]) => {
           if (cancelled) return
-          addStatesLayers(map, data)
+          summariesRef.current = summaries
+          addStatesLayers(map, withFillColors(data, summaries))
         })
         .catch(() => {
           // Static asset failed to load — the landing map just stays blank; nothing else
@@ -98,7 +125,10 @@ export function UsStatesMap() {
       }
       map.setFeatureState({ source: STATES_SOURCE_ID, id: nextId }, { hover: true })
       hoveredIdRef.current = nextId
-      setHoveredStateName(feature.properties.name)
+      setHoveredState({
+        name: feature.properties.name,
+        statusLabel: statusLabelForStateSummary(summariesRef.current.get(feature.properties.name)),
+      })
     })
 
     map.on('mouseleave', STATES_FILL_LAYER_ID, () => {
@@ -107,7 +137,7 @@ export function UsStatesMap() {
         map.setFeatureState({ source: STATES_SOURCE_ID, id: hoveredIdRef.current }, { hover: false })
         hoveredIdRef.current = null
       }
-      setHoveredStateName(null)
+      setHoveredState(null)
     })
 
     map.on('click', STATES_FILL_LAYER_ID, (e: MapLayerMouseEvent) => {
@@ -140,7 +170,28 @@ export function UsStatesMap() {
     <div className="us-states-landing">
       <div className="us-states-landing__header">
         <h1>STR Market Mapping</h1>
-        <p>{hoveredStateName ? `${hoveredStateName} — click to view` : 'Click a state to begin'}</p>
+        <p>{hoveredState ? `${hoveredState.name} — ${hoveredState.statusLabel} — click to view` : 'Click a state to begin'}</p>
+      </div>
+      <div className="us-states-landing__legend">
+        <div className="us-states-landing__legend-title">Good/Great clusters</div>
+        <div className="us-states-landing__legend-row">
+          {GOOD_GREAT_BUCKETS.map((bucket) => (
+            <div key={bucket.label} className="us-states-landing__legend-item">
+              <span className="us-states-landing__legend-swatch" style={{ background: bucket.color }} />
+              {bucket.label}
+            </div>
+          ))}
+        </div>
+        <div className="us-states-landing__legend-row">
+          <div className="us-states-landing__legend-item">
+            <span className="us-states-landing__legend-swatch" style={{ background: EXPLORED_COLOR }} />
+            Explored
+          </div>
+          <div className="us-states-landing__legend-item">
+            <span className="us-states-landing__legend-swatch" style={{ background: UNEXPLORED_COLOR }} />
+            Unexplored
+          </div>
+        </div>
       </div>
       <div ref={containerRef} className="us-states-landing__canvas" />
     </div>
