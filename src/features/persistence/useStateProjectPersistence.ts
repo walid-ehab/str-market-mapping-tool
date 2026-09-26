@@ -54,6 +54,7 @@ export function useStateProjectPersistence(): void {
   const filterValues = useAppStore((s) => s.filterValues)
   const mapStyleId = useAppStore((s) => s.mapStyleId)
   const professionalHostTypes = useAppStore((s) => s.professionalHostTypes)
+  const explored = useAppStore((s) => s.explored)
 
   const debounceRef = useRef<number | undefined>(undefined)
 
@@ -78,6 +79,7 @@ export function useStateProjectPersistence(): void {
         filter_values: filterValues,
         map_style_id: mapStyleId,
         professional_host_types: professionalHostTypes,
+        explored,
         updated_at: new Date().toISOString(),
       }
       saveStateProject(row)
@@ -100,6 +102,7 @@ export function useStateProjectPersistence(): void {
     filterValues,
     mapStyleId,
     professionalHostTypes,
+    explored,
     setStateProjectSaveError,
   ])
 }

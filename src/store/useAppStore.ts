@@ -54,6 +54,8 @@ interface AppState {
   mapStyleId: string
   /** PROPERTY_HOST_TYPE values counted as "professionally hosted" — user-configurable, defaults to 6-20/21+ Units. */
   professionalHostTypes: string[]
+  /** Manually toggleable "I've looked at this state" flag — also auto-set true the moment a cluster is marked Good/Great (never by drawing/auto-detecting a Maybe). Powers the landing map's explored/unexplored color. */
+  explored: boolean
 
   clusters: Cluster[]
   activeClusterId: string | null
@@ -72,6 +74,7 @@ interface AppState {
   resetFilters: () => void
   setMapStyleId: (id: string) => void
   toggleProfessionalHostType: (hostType: string) => void
+  setExplored: (explored: boolean) => void
 
   addCluster: (cluster: Cluster) => void
   /** Appends several clusters at once (e.g. from auto-detection) without re-picking activeClusterId per cluster. */
@@ -111,6 +114,7 @@ export const useAppStore = create<AppState>((set) => ({
   filterValues: defaultFilterValues(),
   mapStyleId: DEFAULT_MAP_STYLE_ID,
   professionalHostTypes: DEFAULT_PROFESSIONAL_HOST_TYPES,
+  explored: false,
 
   clusters: [],
   activeClusterId: null,
@@ -135,6 +139,7 @@ export const useAppStore = create<AppState>((set) => ({
       filterValues: defaultFilterValues(),
       mapStyleId: DEFAULT_MAP_STYLE_ID,
       professionalHostTypes: DEFAULT_PROFESSIONAL_HOST_TYPES,
+      explored: false,
     }),
   clearSelectedState: () => set({ selectedState: null }),
 
@@ -168,6 +173,7 @@ export const useAppStore = create<AppState>((set) => ({
         ? state.professionalHostTypes.filter((t) => t !== hostType)
         : [...state.professionalHostTypes, hostType],
     })),
+  setExplored: (explored) => set({ explored }),
 
   addCluster: (cluster) => set((state) => ({ clusters: [...state.clusters, cluster], activeClusterId: cluster.id })),
   addClusters: (newClusters) => set((state) => ({ clusters: [...state.clusters, ...newClusters] })),
@@ -179,11 +185,15 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({
       clusters: state.clusters.map((c) => (c.id === id ? { ...c, name } : c)),
     })),
+  // Marking a cluster Good/Great also flips explored true — but only that, never drawing or
+  // auto-detecting a Maybe cluster (both always default to DEFAULT_CLUSTER_CONFIDENCE, 'maybe',
+  // so this is the only path that can ever set a non-maybe confidence).
   setClusterConfidence: (id, confidence) =>
     set((state) => ({
       clusters: state.clusters.map((c) =>
         c.id === id ? { ...c, confidence, color: CLUSTER_CONFIDENCE_COLORS[confidence] } : c,
       ),
+      explored: state.explored || confidence === 'good' || confidence === 'great',
     })),
   setClusterNotes: (id, notes) =>
     set((state) => ({
@@ -214,6 +224,7 @@ export const useAppStore = create<AppState>((set) => ({
       filterValues: row.filter_values ?? defaultFilterValues(),
       mapStyleId: row.map_style_id,
       professionalHostTypes: row.professional_host_types ?? DEFAULT_PROFESSIONAL_HOST_TYPES,
+      explored: row.explored ?? false,
       activeClusterId: null,
       stateProjectHydrated: true,
     }),
@@ -226,6 +237,7 @@ export const useAppStore = create<AppState>((set) => ({
       filterValues: defaultFilterValues(),
       mapStyleId: DEFAULT_MAP_STYLE_ID,
       professionalHostTypes: DEFAULT_PROFESSIONAL_HOST_TYPES,
+      explored: false,
       activeClusterId: null,
       stateProjectHydrated: true,
     }),

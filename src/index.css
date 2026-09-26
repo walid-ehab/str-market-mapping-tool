@@ -80,6 +80,16 @@ button {
   text-decoration: underline;
 }
 
+.sidebar__explored-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  cursor: pointer;
+}
+
 .sidebar__section {
   border-top: 1px solid var(--border);
   padding-top: 16px;
@@ -562,6 +572,50 @@ button {
   font-size: 13px;
   color: var(--text-muted);
   margin: 0;
+}
+
+.us-states-landing__legend {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  z-index: 1;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.us-states-landing__legend-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.us-states-landing__legend-row {
+  display: flex;
+  gap: 14px;
+}
+
+.us-states-landing__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.us-states-landing__legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .us-states-landing__canvas {

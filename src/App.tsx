@@ -30,6 +30,8 @@ function App() {
   const selectedState = useAppStore((s) => s.selectedState)
   const clearSelectedState = useAppStore((s) => s.clearSelectedState)
   const stateProjectSaveError = useAppStore((s) => s.stateProjectSaveError)
+  const explored = useAppStore((s) => s.explored)
+  const setExplored = useAppStore((s) => s.setExplored)
   // Owned here (not inside MapView) so the cluster list in the sidebar — a sibling of
   // MapView, not one of its children — can also reach the map, e.g. to fly to a cluster.
   const [mapInstance, setMapInstance] = useState<MapLibreMap | null>(null)
@@ -47,6 +49,10 @@ function App() {
             <p>
               {selectedState} · <button className="sidebar__link-button" onClick={clearSelectedState}>Change state</button>
             </p>
+            <label className="sidebar__explored-toggle">
+              <input type="checkbox" checked={explored} onChange={(e) => setExplored(e.target.checked)} />
+              Mark {selectedState} as explored
+            </label>
           </div>
 
           <div className="sidebar__section">
