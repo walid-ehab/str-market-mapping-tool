@@ -152,12 +152,12 @@ export function PolygonDraw() {
     }
 
     // Zooming out past the state's own natural fit level, by a decent margin, reads as "I'm
-    // done with this state" — mirrors the landing map's own zoom-in transition, in reverse.
-    // Switches straight into the landing map at the exact camera the user just zoomed out to
-    // (no extra fly-out animation first, which read as a jarring double-transition), so the
-    // whole thing plays as one continuous zoom rather than a snap-then-drift. Suppressed
-    // mid-draw (drawing a new polygon or editing an existing one's vertices) so zooming out to
-    // see more context while drawing doesn't unexpectedly discard the in-progress shape.
+    // done with this state". The map itself is a single persistent instance shared with the
+    // landing choropleth (see MapView), so leaving just means switching which layers are
+    // visible — the camera is never touched, and holds exactly where the user zoomed out to.
+    // Suppressed mid-draw (drawing a new polygon or editing an existing one's vertices) so
+    // zooming out to see more context while drawing doesn't unexpectedly discard the
+    // in-progress shape.
     const handleZoomEnd = () => {
       if (drawRef.current?.getMode() !== 'simple_select') return
       const bounds = datasetBounds(useAppStore.getState().listings)
@@ -167,8 +167,6 @@ export function PolygonDraw() {
       if (map.getZoom() >= camera.zoom - ZOOM_OUT_MARGIN) return
 
       map.off('zoomend', handleZoomEnd)
-      const center = map.getCenter()
-      useAppStore.getState().setPendingLandingCamera({ center: [center.lng, center.lat], zoom: map.getZoom() })
       useAppStore.getState().clearSelectedState()
     }
     map.on('zoomend', handleZoomEnd)

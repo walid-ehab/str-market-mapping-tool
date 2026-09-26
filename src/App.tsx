@@ -17,7 +17,6 @@ import { PolygonDraw } from '@/features/polygon-draw/PolygonDraw'
 import { GenerateReportButton } from '@/features/report/GenerateReportButton'
 import { ThresholdControl } from '@/features/revenue-tiering/ThresholdControl'
 import { useStateListings } from '@/features/state-listings/useStateListings'
-import { UsStatesMap } from '@/features/state-select/UsStatesMap'
 import { useAppStore } from '@/store/useAppStore'
 
 function App() {
@@ -37,90 +36,91 @@ function App() {
   // MapView, not one of its children — can also reach the map, e.g. to fly to a cluster.
   const [mapInstance, setMapInstance] = useState<MapLibreMap | null>(null)
 
-  if (!selectedState) {
-    return <UsStatesMap />
-  }
-
   return (
     <MapProvider value={mapInstance}>
       <div className="app-shell">
-        <aside className="sidebar">
-          <div className="sidebar__header">
-            <h1>STR Market Mapping</h1>
-            <p>
-              {selectedState} · <button className="sidebar__link-button" onClick={clearSelectedState}>Change state</button>
-            </p>
-            <label className="sidebar__explored-toggle">
-              <input
-                type="checkbox"
-                checked={explored}
-                disabled={hasGoodOrGreatCluster}
-                onChange={(e) => setExplored(e.target.checked)}
-              />
-              Mark {selectedState} as explored
-            </label>
-            {hasGoodOrGreatCluster && (
-              <div className="sidebar__explored-hint">Remove all Good/Great clusters to turn this off</div>
-            )}
-          </div>
-
-          <div className="sidebar__section">
-            <h2>Listings</h2>
-            <div className="listings-status">
-              {isLoadingDataset && <div className="listings-status__meta">Loading {selectedState} listings…</div>}
-              {datasetError && <div className="listings-status__error">{datasetError}</div>}
-              {!isLoadingDataset && !datasetError && hasDataset && (
-                <div className="listings-status__meta">{listingCount.toLocaleString()} listings loaded</div>
+        {selectedState && (
+          <aside className="sidebar">
+            <div className="sidebar__header">
+              <h1>STR Market Mapping</h1>
+              <p>
+                {selectedState} · <button className="sidebar__link-button" onClick={clearSelectedState}>Change state</button>
+              </p>
+              <label className="sidebar__explored-toggle">
+                <input
+                  type="checkbox"
+                  checked={explored}
+                  disabled={hasGoodOrGreatCluster}
+                  onChange={(e) => setExplored(e.target.checked)}
+                />
+                Mark {selectedState} as explored
+              </label>
+              {hasGoodOrGreatCluster && (
+                <div className="sidebar__explored-hint">Remove all Good/Great clusters to turn this off</div>
               )}
             </div>
-          </div>
 
-          {hasDataset && (
-            <>
-              <div className="sidebar__section">
-                <h2>Revenue Tiering</h2>
-                <ThresholdControl />
-              </div>
-
-              <CollapsibleSection title="Professionally Hosted Definition" defaultOpen={false}>
-                <ProfessionalHostTypeSettings />
-              </CollapsibleSection>
-
-              <CollapsibleSection title="Filters">
-                <FilterPanel />
-              </CollapsibleSection>
-
-              <CollapsibleSection title="Auto-Detect Clusters" defaultOpen={false}>
-                <AutoDetectClusters />
-              </CollapsibleSection>
-
-              <div className="sidebar__section sidebar__section--grow">
-                <div className="sidebar__section-header">
-                  <h2>Clusters</h2>
-                  <div className="sidebar__section-header-actions">
-                    <ExportAllClustersButton />
-                    <DeleteAllClustersButton />
-                  </div>
-                </div>
-                {stateProjectSaveError && (
-                  <div className="listings-status__error">Not saved: {stateProjectSaveError}</div>
+            <div className="sidebar__section">
+              <h2>Listings</h2>
+              <div className="listings-status">
+                {isLoadingDataset && <div className="listings-status__meta">Loading {selectedState} listings…</div>}
+                {datasetError && <div className="listings-status__error">{datasetError}</div>}
+                {!isLoadingDataset && !datasetError && hasDataset && (
+                  <div className="listings-status__meta">{listingCount.toLocaleString()} listings loaded</div>
                 )}
-                <ClusterList />
-                <GenerateReportButton />
-                <AnalyticsPanel />
               </div>
-            </>
-          )}
-        </aside>
+            </div>
+
+            {hasDataset && (
+              <>
+                <div className="sidebar__section">
+                  <h2>Revenue Tiering</h2>
+                  <ThresholdControl />
+                </div>
+
+                <CollapsibleSection title="Professionally Hosted Definition" defaultOpen={false}>
+                  <ProfessionalHostTypeSettings />
+                </CollapsibleSection>
+
+                <CollapsibleSection title="Filters">
+                  <FilterPanel />
+                </CollapsibleSection>
+
+                <CollapsibleSection title="Auto-Detect Clusters" defaultOpen={false}>
+                  <AutoDetectClusters />
+                </CollapsibleSection>
+
+                <div className="sidebar__section sidebar__section--grow">
+                  <div className="sidebar__section-header">
+                    <h2>Clusters</h2>
+                    <div className="sidebar__section-header-actions">
+                      <ExportAllClustersButton />
+                      <DeleteAllClustersButton />
+                    </div>
+                  </div>
+                  {stateProjectSaveError && (
+                    <div className="listings-status__error">Not saved: {stateProjectSaveError}</div>
+                  )}
+                  <ClusterList />
+                  <GenerateReportButton />
+                  <AnalyticsPanel />
+                </div>
+              </>
+            )}
+          </aside>
+        )}
 
         <main className="map-pane">
-          {hasDataset ? (
-            <MapView onMapReady={setMapInstance}>
-              <StyleSwitcher />
-              <Legend />
-              <PolygonDraw />
-            </MapView>
-          ) : (
+          <MapView onMapReady={setMapInstance}>
+            {selectedState && hasDataset && (
+              <>
+                <StyleSwitcher />
+                <Legend />
+                <PolygonDraw />
+              </>
+            )}
+          </MapView>
+          {selectedState && !hasDataset && (
             <div className="map-pane__placeholder">
               {isLoadingDataset ? `Loading ${selectedState} listings…` : datasetError || 'No listings loaded.'}
             </div>
