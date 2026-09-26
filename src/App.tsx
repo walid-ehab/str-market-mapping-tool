@@ -12,9 +12,8 @@ import { Legend } from '@/features/map/Legend'
 import { MapProvider } from '@/features/map/MapContext'
 import { MapView } from '@/features/map/MapView'
 import { StyleSwitcher } from '@/features/map/StyleSwitcher'
-import { usePersistence } from '@/features/persistence/usePersistence'
+import { useStateProjectPersistence } from '@/features/persistence/useStateProjectPersistence'
 import { PolygonDraw } from '@/features/polygon-draw/PolygonDraw'
-import { ProjectSwitcher } from '@/features/projects/ProjectSwitcher'
 import { GenerateReportButton } from '@/features/report/GenerateReportButton'
 import { ThresholdControl } from '@/features/revenue-tiering/ThresholdControl'
 import { useStateListings } from '@/features/state-listings/useStateListings'
@@ -22,15 +21,15 @@ import { UsStatesMap } from '@/features/state-select/UsStatesMap'
 import { useAppStore } from '@/store/useAppStore'
 
 function App() {
-  usePersistence()
+  useStateProjectPersistence()
   useStateListings()
-  const hasHydrated = useAppStore((s) => s.hasHydrated)
   const hasDataset = useAppStore((s) => s.listings.length > 0)
   const isLoadingDataset = useAppStore((s) => s.isLoadingDataset)
   const datasetError = useAppStore((s) => s.datasetError)
   const listingCount = useAppStore((s) => s.listings.length)
   const selectedState = useAppStore((s) => s.selectedState)
   const clearSelectedState = useAppStore((s) => s.clearSelectedState)
+  const stateProjectSaveError = useAppStore((s) => s.stateProjectSaveError)
   // Owned here (not inside MapView) so the cluster list in the sidebar — a sibling of
   // MapView, not one of its children — can also reach the map, e.g. to fly to a cluster.
   const [mapInstance, setMapInstance] = useState<MapLibreMap | null>(null)
@@ -49,10 +48,6 @@ function App() {
               {selectedState} · <button className="sidebar__link-button" onClick={clearSelectedState}>Change state</button>
             </p>
           </div>
-
-          <CollapsibleSection title="Step 1 · Select or Create a Project">
-            <ProjectSwitcher />
-          </CollapsibleSection>
 
           <div className="sidebar__section">
             <h2>Listings</h2>
@@ -92,6 +87,9 @@ function App() {
                     <DeleteAllClustersButton />
                   </div>
                 </div>
+                {stateProjectSaveError && (
+                  <div className="listings-status__error">Not saved: {stateProjectSaveError}</div>
+                )}
                 <ClusterList />
                 <GenerateReportButton />
                 <AnalyticsPanel />
@@ -101,9 +99,7 @@ function App() {
         </aside>
 
         <main className="map-pane">
-          {!hasHydrated ? (
-            <div className="map-pane__placeholder">Loading…</div>
-          ) : hasDataset ? (
+          {hasDataset ? (
             <MapView onMapReady={setMapInstance}>
               <StyleSwitcher />
               <Legend />

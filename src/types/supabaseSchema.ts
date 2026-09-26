@@ -5,10 +5,16 @@
  *
  * ListingRow mirrors the live `listings` table: a near-verbatim, lowercased load of the
  * Snowflake CSV export. Several fields that look numeric/boolean are typed `string` here
- * because that's how the live table actually stores them — a mapping layer (not yet written)
- * will parse them the same way csv.ts already does for uploaded CSVs.
+ * because that's how the live table actually stores them — supabaseListings.ts parses them
+ * the same way csv.ts parses an uploaded CSV's columns.
+ *
+ * Deliberately `type`, not `interface` — supabase-js's generic client checks
+ * `Database['public'] extends GenericSchema` (Tables/Views values extending
+ * Record<string, unknown>), and an interface's declaration-merging "openness" makes
+ * TypeScript refuse that check even when every property lines up; a closed object-literal
+ * type alias passes it.
  */
-export interface ListingRow {
+export type ListingRow = {
   static_combined_property_id: string | null
   title: string | null
   property_type: string | null
@@ -58,7 +64,7 @@ export interface ListingRow {
   airbnb_listing_url: string | null
 }
 
-export interface StateProjectRow {
+export type StateProjectRow = {
   state_name: string
   /** Cluster[] (see src/types/cluster.ts), stored as jsonb. */
   clusters: unknown
@@ -71,19 +77,26 @@ export interface StateProjectRow {
   updated_at: string
 }
 
+// supabase-js's generic client requires this exact shape (Tables/Views/Functions, each entry
+// carrying Relationships) — see @supabase/postgrest-js's GenericSchema. listings is genuinely
+// a view (confirmed via pg_get_viewdef — see supabase/schema.sql), read-only from the app's
+// side, so it belongs under Views, not Tables.
 export interface Database {
   public: {
     Tables: {
-      listings: {
-        Row: ListingRow
-        Insert: ListingRow
-        Update: Partial<ListingRow>
-      }
       state_projects: {
         Row: StateProjectRow
         Insert: StateProjectRow
         Update: Partial<StateProjectRow>
+        Relationships: []
       }
     }
+    Views: {
+      listings: {
+        Row: ListingRow
+        Relationships: []
+      }
+    }
+    Functions: Record<string, never>
   }
 }

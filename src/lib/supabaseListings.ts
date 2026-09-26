@@ -95,7 +95,10 @@ export async function fetchListingsForState(stateName: string): Promise<Listing[
   pages.forEach(({ data, error }, pageIndex) => {
     if (error) throw new Error(error.message)
     ;(data ?? []).forEach((row, i) => {
-      const listing = rowToListing(row as ListingRow, pageIndex * PAGE_SIZE + i)
+      // SELECT_COLUMNS is built at runtime (a plain string, not a literal), so supabase-js's
+      // select-query-parser can't narrow the returned row's type from it — cast through
+      // unknown rather than force a direct (and, for the same reason, invalid) assertion.
+      const listing = rowToListing(row as unknown as ListingRow, pageIndex * PAGE_SIZE + i)
       if (listing) listings.push(listing)
     })
   })

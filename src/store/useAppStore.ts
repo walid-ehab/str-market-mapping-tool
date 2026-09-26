@@ -2,16 +2,16 @@ import type { Position } from 'geojson'
 import { create } from 'zustand'
 import { defaultColorModeId } from '@/features/color-modes/registry'
 import { defaultFilterValues } from '@/features/filters/registry'
-import type { ProjectRecord, ProjectSummary } from '@/features/persistence/db'
 import { CLUSTER_CONFIDENCE_COLORS, DEFAULT_CLUSTER_CONFIDENCE, type ClusterConfidence } from '@/lib/clusterConfidence'
 import { DEFAULT_PROFESSIONAL_HOST_TYPES } from '@/lib/hostType'
 import type { Cluster } from '@/types/cluster'
 import type { Listing } from '@/types/listing'
+import type { StateProjectRow } from '@/types/supabaseSchema'
 
 export const DEFAULT_REVENUE_THRESHOLD = 90000
 export const DEFAULT_MAP_STYLE_ID = 'carto-positron'
 
-/** Backfills fields added after a cluster may have already been saved (confidence, notes) so old projects load without breaking. */
+/** Backfills fields added after a cluster may have already been saved (confidence, notes) so old saves load without breaking. */
 function normalizeClusters(clusters: Cluster[]): Cluster[] {
   return clusters.map((c) => ({
     ...c,
@@ -20,29 +20,31 @@ function normalizeClusters(clusters: Cluster[]): Cluster[] {
   }))
 }
 
+/** A state_projects row's clusters column is jsonb — comes back as a parsed value, not a string, but still worth a shape check before trusting it as Cluster[]. */
+function parseClusters(value: unknown): Cluster[] {
+  return Array.isArray(value) ? (value as Cluster[]) : []
+}
+
 interface AppState {
   // Which US state the user picked on the landing map — gates whether the landing view or
-  // the main dashboard renders. Not persisted (a fresh load always starts back at the US map);
-  // per-state saved data is a separate, later concern from this view-level selection.
+  // the main dashboard renders, and scopes both the listings fetch and the clusters/settings
+  // below. Not persisted itself (a fresh load always starts back at the US map).
   selectedState: string | null
 
-  // The current project — clusters and their settings. Persisted per project; switching
-  // projects never touches another project's saved clusters.
-  projectId: string | null
-  projectName: string
-  projectCreatedAt: number
-  /** Every saved project's id/name/updatedAt, for the project switcher. Not itself persisted — reloaded/kept in sync by usePersistence. */
-  projects: ProjectSummary[]
-
-  // The current dataset — NOT persisted (a project only remembers clusters/settings, not
-  // listings), so switching projects or reloading the page always starts with an empty map.
+  // The current dataset — always re-fetched from Supabase for the selected state, never
+  // persisted itself (see useStateListings).
   datasetFileName: string | null
   datasetUploadedAt: number | null
   listings: Listing[]
   isLoadingDataset: boolean
   datasetError: string | null
-  /** Filename of the CSV last uploaded into this project, before this session's dataset (if any) was cleared — a re-upload hint shown while datasetFileName is null. */
-  projectLastDatasetFileName: string | null
+
+  // Whether the selected state's clusters/settings have finished loading from state_projects —
+  // the autosave in useStateProjectPersistence must not fire before this, or it would
+  // overwrite a real saved row with these fields' pre-load defaults.
+  stateProjectHydrated: boolean
+  /** Set when the debounced autosave to state_projects fails — surfaced in the UI since a silent failure here means a user's cluster edits are quietly not being saved. */
+  stateProjectSaveError: string | null
 
   revenueThreshold: number
   colorModeId: string
@@ -55,8 +57,6 @@ interface AppState {
 
   clusters: Cluster[]
   activeClusterId: string | null
-
-  hasHydrated: boolean
 
   selectState: (stateName: string) => void
   clearSelectedState: () => void
@@ -86,29 +86,24 @@ interface AppState {
   removeAllClusters: () => void
   setActiveClusterId: (id: string | null) => void
 
-  setProjects: (projects: ProjectSummary[]) => void
-  setProjectName: (name: string) => void
-  /** Loads a saved project's clusters/settings. Always clears the current dataset — a project doesn't carry listings, so the map starts empty until a CSV is (re-)uploaded. */
-  hydrateProject: (project: ProjectRecord) => void
-  /** Resets everything (clusters, settings, dataset) to defaults under a fresh project id/name. */
-  resetForNewProject: (id: string, name: string) => void
-  markHydrated: () => void
+  /** Loads a state's saved clusters/settings row from state_projects. */
+  hydrateStateProject: (row: StateProjectRow) => void
+  /** No saved row exists yet for this state — resets clusters/settings to defaults. */
+  resetStateProjectDefaults: () => void
+  setStateProjectSaveError: (error: string | null) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
   selectedState: null,
-
-  projectId: null,
-  projectName: 'New Project',
-  projectCreatedAt: Date.now(),
-  projects: [],
 
   datasetFileName: null,
   datasetUploadedAt: null,
   listings: [],
   isLoadingDataset: false,
   datasetError: null,
-  projectLastDatasetFileName: null,
+
+  stateProjectHydrated: false,
+  stateProjectSaveError: null,
 
   revenueThreshold: DEFAULT_REVENUE_THRESHOLD,
   colorModeId: defaultColorModeId,
@@ -120,9 +115,27 @@ export const useAppStore = create<AppState>((set) => ({
   clusters: [],
   activeClusterId: null,
 
-  hasHydrated: false,
-
-  selectState: (stateName) => set({ selectedState: stateName }),
+  // Resets everything to defaults immediately on selection (not just once the real fetches
+  // resolve) so a newly-picked state never briefly shows the previous state's data.
+  selectState: (stateName) =>
+    set({
+      selectedState: stateName,
+      datasetFileName: null,
+      datasetUploadedAt: null,
+      listings: [],
+      isLoadingDataset: false,
+      datasetError: null,
+      stateProjectHydrated: false,
+      stateProjectSaveError: null,
+      clusters: [],
+      activeClusterId: null,
+      revenueThreshold: DEFAULT_REVENUE_THRESHOLD,
+      colorModeId: defaultColorModeId,
+      hiddenLegendEntries: {},
+      filterValues: defaultFilterValues(),
+      mapStyleId: DEFAULT_MAP_STYLE_ID,
+      professionalHostTypes: DEFAULT_PROFESSIONAL_HOST_TYPES,
+    }),
   clearSelectedState: () => set({ selectedState: null }),
 
   setLoadingDataset: (loading) => set({ isLoadingDataset: loading }),
@@ -192,32 +205,20 @@ export const useAppStore = create<AppState>((set) => ({
   removeAllClusters: () => set({ clusters: [], activeClusterId: null }),
   setActiveClusterId: (id) => set({ activeClusterId: id }),
 
-  setProjects: (projects) => set({ projects }),
-  setProjectName: (name) => set({ projectName: name }),
-  hydrateProject: (project) =>
+  hydrateStateProject: (row) =>
     set({
-      projectId: project.id,
-      projectName: project.name,
-      projectCreatedAt: project.createdAt,
-      clusters: normalizeClusters(project.clusters),
-      revenueThreshold: project.revenueThreshold,
-      colorModeId: project.colorModeId,
-      hiddenLegendEntries: project.hiddenLegendEntries ?? {},
-      filterValues: project.filterValues,
-      mapStyleId: project.mapStyleId,
-      professionalHostTypes: project.professionalHostTypes ?? DEFAULT_PROFESSIONAL_HOST_TYPES,
+      clusters: normalizeClusters(parseClusters(row.clusters)),
+      revenueThreshold: row.revenue_threshold,
+      colorModeId: row.color_mode_id,
+      hiddenLegendEntries: row.hidden_legend_entries ?? {},
+      filterValues: row.filter_values ?? defaultFilterValues(),
+      mapStyleId: row.map_style_id,
+      professionalHostTypes: row.professional_host_types ?? DEFAULT_PROFESSIONAL_HOST_TYPES,
       activeClusterId: null,
-      datasetFileName: null,
-      datasetUploadedAt: null,
-      listings: [],
-      datasetError: null,
-      projectLastDatasetFileName: project.lastDatasetFileName,
+      stateProjectHydrated: true,
     }),
-  resetForNewProject: (id, name) =>
+  resetStateProjectDefaults: () =>
     set({
-      projectId: id,
-      projectName: name,
-      projectCreatedAt: Date.now(),
       clusters: [],
       revenueThreshold: DEFAULT_REVENUE_THRESHOLD,
       colorModeId: defaultColorModeId,
@@ -226,11 +227,7 @@ export const useAppStore = create<AppState>((set) => ({
       mapStyleId: DEFAULT_MAP_STYLE_ID,
       professionalHostTypes: DEFAULT_PROFESSIONAL_HOST_TYPES,
       activeClusterId: null,
-      datasetFileName: null,
-      datasetUploadedAt: null,
-      listings: [],
-      datasetError: null,
-      projectLastDatasetFileName: null,
+      stateProjectHydrated: true,
     }),
-  markHydrated: () => set({ hasHydrated: true }),
+  setStateProjectSaveError: (error) => set({ stateProjectSaveError: error }),
 }))
