@@ -90,6 +90,16 @@ button {
   cursor: pointer;
 }
 
+.sidebar__explored-toggle:has(input:disabled) {
+  cursor: default;
+}
+
+.sidebar__explored-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .sidebar__section {
   border-top: 1px solid var(--border);
   padding-top: 16px;

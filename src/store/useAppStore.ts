@@ -25,6 +25,10 @@ function parseClusters(value: unknown): Cluster[] {
   return Array.isArray(value) ? (value as Cluster[]) : []
 }
 
+function hasGoodOrGreatCluster(clusters: Cluster[]): boolean {
+  return clusters.some((c) => c.confidence === 'good' || c.confidence === 'great')
+}
+
 interface AppState {
   // Which US state the user picked on the landing map — gates whether the landing view or
   // the main dashboard renders, and scopes both the listings fetch and the clusters/settings
@@ -173,7 +177,13 @@ export const useAppStore = create<AppState>((set) => ({
         ? state.professionalHostTypes.filter((t) => t !== hostType)
         : [...state.professionalHostTypes, hostType],
     })),
-  setExplored: (explored) => set({ explored }),
+  // Turning explored off while a Good/Great cluster still exists would leave the database
+  // holding that cluster forever unsaved from this point on — the autosave gate treats an
+  // unexplored state as scratch work, so any further edit (even downgrading that exact
+  // cluster back to Maybe) would silently stop persisting. Blocking the toggle here instead
+  // of only in the UI keeps that invariant true regardless of call site.
+  setExplored: (explored) =>
+    set((state) => (!explored && hasGoodOrGreatCluster(state.clusters) ? state : { explored })),
 
   addCluster: (cluster) => set((state) => ({ clusters: [...state.clusters, cluster], activeClusterId: cluster.id })),
   addClusters: (newClusters) => set((state) => ({ clusters: [...state.clusters, ...newClusters] })),
