@@ -1,6 +1,7 @@
 import bbox from '@turf/bbox'
 import type { Feature, FeatureCollection, MultiPolygon, Point, Polygon } from 'geojson'
 import {
+  type ExpressionSpecification,
   type GeoJSONSource,
   type MapLayerMouseEvent,
   MapLibreMap,
@@ -38,16 +39,34 @@ const STATES_LINE_LAYER_ID = 'us-states-line'
 const DEFAULT_CENTER: [number, number] = [-98.5795, 39.8283]
 const DEFAULT_ZOOM = 3.4
 
+// Roughly the continental US — where the "Change state" button returns the camera to.
+export const US_BOUNDS: [[number, number], [number, number]] = [
+  [-125, 24],
+  [-66, 50],
+]
+
+// How the choropleth and the listings layer crossfade into/out of each other on a mode switch —
+// applied as each layer's own paint transition (see ensure*Layer below) rather than an ordinary
+// CSS transition, since these are canvas-rendered MapLibre layers, not DOM elements.
+const LAYER_FADE = { duration: 400 }
+
 const EMPTY_LISTINGS_FC: FeatureCollection<Point, ListingFeatureProperties> = { type: 'FeatureCollection', features: [] }
 
 type StateProperties = { name: string; fillColor: string }
 type StateFeature = Feature<Polygon | MultiPolygon, StateProperties>
 type StatesFeatureCollection = FeatureCollection<Polygon | MultiPolygon, StateProperties>
 
-function ensureListingsLayer(map: MapLibreMap, data: FeatureCollection<Point, ListingFeatureProperties>) {
+const statesFillOpacityExpression = (isLanding: boolean): ExpressionSpecification => [
+  '*',
+  isLanding ? 1 : 0,
+  ['case', ['boolean', ['feature-state', 'hover'], false], 0.95, 0.75],
+]
+
+function ensureListingsLayer(map: MapLibreMap, data: FeatureCollection<Point, ListingFeatureProperties>, isLanding: boolean) {
   if (!map.getSource(LISTINGS_SOURCE_ID)) {
     map.addSource(LISTINGS_SOURCE_ID, { type: 'geojson', data })
   }
+  const opacity = isLanding ? 0 : 1
   if (!map.getLayer(LISTINGS_LAYER_ID)) {
     map.addLayer({
       id: LISTINGS_LAYER_ID,
@@ -55,9 +74,12 @@ function ensureListingsLayer(map: MapLibreMap, data: FeatureCollection<Point, Li
       source: LISTINGS_SOURCE_ID,
       paint: {
         'circle-color': ['get', 'color'],
-        'circle-opacity': 0.85,
+        'circle-opacity': opacity * 0.85,
+        'circle-opacity-transition': LAYER_FADE,
         'circle-stroke-width': 0.6,
         'circle-stroke-color': '#ffffff',
+        'circle-stroke-opacity': opacity,
+        'circle-stroke-opacity-transition': LAYER_FADE,
         'circle-radius': [
           'interpolate',
           ['linear'],
@@ -87,20 +109,19 @@ function withFillColors(
   }
 }
 
-function ensureStatesLayer(map: MapLibreMap, data: StatesFeatureCollection, visible: boolean) {
+function ensureStatesLayer(map: MapLibreMap, data: StatesFeatureCollection, isLanding: boolean) {
   if (!map.getSource(STATES_SOURCE_ID)) {
     map.addSource(STATES_SOURCE_ID, { type: 'geojson', data, promoteId: 'name' })
   }
-  const visibility = visible ? 'visible' : 'none'
   if (!map.getLayer(STATES_FILL_LAYER_ID)) {
     map.addLayer({
       id: STATES_FILL_LAYER_ID,
       type: 'fill',
       source: STATES_SOURCE_ID,
-      layout: { visibility },
       paint: {
         'fill-color': ['get', 'fillColor'],
-        'fill-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.95, 0.75],
+        'fill-opacity': statesFillOpacityExpression(isLanding),
+        'fill-opacity-transition': LAYER_FADE,
       },
     })
   }
@@ -109,12 +130,27 @@ function ensureStatesLayer(map: MapLibreMap, data: StatesFeatureCollection, visi
       id: STATES_LINE_LAYER_ID,
       type: 'line',
       source: STATES_SOURCE_ID,
-      layout: { visibility },
       paint: {
         'line-color': '#124c3c',
         'line-width': 1,
+        'line-opacity': isLanding ? 1 : 0,
+        'line-opacity-transition': LAYER_FADE,
       },
     })
+  }
+}
+
+/** Crossfades the choropleth and the listings layer into/out of each other — called once per mode switch (never on the initial creation above, which already bakes in the correct starting opacity). */
+function applyModeOpacity(map: MapLibreMap, isLanding: boolean) {
+  if (map.getLayer(STATES_FILL_LAYER_ID)) {
+    map.setPaintProperty(STATES_FILL_LAYER_ID, 'fill-opacity', statesFillOpacityExpression(isLanding))
+  }
+  if (map.getLayer(STATES_LINE_LAYER_ID)) {
+    map.setPaintProperty(STATES_LINE_LAYER_ID, 'line-opacity', isLanding ? 1 : 0)
+  }
+  if (map.getLayer(LISTINGS_LAYER_ID)) {
+    map.setPaintProperty(LISTINGS_LAYER_ID, 'circle-opacity', (isLanding ? 0 : 1) * 0.85)
+    map.setPaintProperty(LISTINGS_LAYER_ID, 'circle-stroke-opacity', isLanding ? 0 : 1)
   }
 }
 
@@ -128,9 +164,10 @@ interface MapViewProps {
  * The single, persistent map instance for the whole app — created once and never torn down.
  * It shows one of two layer sets depending on whether a state is selected: the US choropleth
  * (click a state to zoom in and select it) or that state's listings (plus any cluster drawing,
- * via `children`). Switching between them only toggles layer visibility and, for the choropleth,
- * refreshes its colors — the camera is never reset, so entering/leaving a state and zooming
- * back out plays as one continuous motion instead of a snap between two separate maps.
+ * via `children`). Switching between them crossfades layer opacity (see applyModeOpacity) and,
+ * for the choropleth, refreshes its colors — the camera is never reset, so entering/leaving a
+ * state and zooming back out plays as one continuous motion instead of a snap between two
+ * separate maps.
  */
 export function MapView({ children, onMapReady }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -203,7 +240,7 @@ export function MapView({ children, onMapReady }: MapViewProps) {
     }
 
     map.on('load', () => {
-      ensureListingsLayer(map, latestListingsDataRef.current)
+      ensureListingsLayer(map, latestListingsDataRef.current, !selectedStateRef.current)
       loadStatesData()
       setMapInstance(map)
     })
@@ -234,11 +271,13 @@ export function MapView({ children, onMapReady }: MapViewProps) {
       if (!popup.isOpen()) popup.addTo(map)
     }
 
+    // Guarded by mode: the layer stays fully rendered (just faded to 0 opacity) while landing,
+    // so without this it would still be hit-testable and could pop up a "ghost" listing card.
     map.on('mouseenter', LISTINGS_LAYER_ID, () => {
-      map.getCanvas().style.cursor = 'pointer'
+      if (selectedStateRef.current) map.getCanvas().style.cursor = 'pointer'
     })
     map.on('mousemove', LISTINGS_LAYER_ID, (e: MapLayerMouseEvent) => {
-      if (isPinned) return
+      if (isPinned || !selectedStateRef.current) return
       const feature = e.features?.[0]
       if (feature) showPopup(feature)
     })
@@ -247,6 +286,7 @@ export function MapView({ children, onMapReady }: MapViewProps) {
       if (!isPinned) popup.remove()
     })
     map.on('click', LISTINGS_LAYER_ID, (e: MapLayerMouseEvent) => {
+      if (!selectedStateRef.current) return
       const feature = e.features?.[0]
       if (!feature) return
       showPopup(feature)
@@ -312,7 +352,7 @@ export function MapView({ children, onMapReady }: MapViewProps) {
     // setStyle() (basemap switching, or leaving/entering a state) tears down every custom
     // source/layer — re-add both layer sets from whatever data we already have.
     map.on('style.load', () => {
-      ensureListingsLayer(map, latestListingsDataRef.current)
+      ensureListingsLayer(map, latestListingsDataRef.current, !selectedStateRef.current)
       if (statesDataRef.current) ensureStatesLayer(map, statesDataRef.current, !selectedStateRef.current)
     })
 
@@ -341,7 +381,7 @@ export function MapView({ children, onMapReady }: MapViewProps) {
     // never re-added and the map silently pointless (this was the satellite-only bug: every
     // other style is a URL, which is always async, so the race never showed up there).
     map.once('style.load', () => {
-      ensureListingsLayer(map, latestListingsDataRef.current)
+      ensureListingsLayer(map, latestListingsDataRef.current, !selectedStateRef.current)
       if (statesDataRef.current) ensureStatesLayer(map, statesDataRef.current, !selectedStateRef.current)
     })
     map.setStyle(getMapStyle(effectiveStyleId).style)
@@ -370,17 +410,17 @@ export function MapView({ children, onMapReady }: MapViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapInstance, rawListings.length])
 
-  // Toggle the choropleth's visibility as the selected state changes, and — on returning to
-  // the landing view — refresh its colors so any clusters just marked show up immediately.
+  // Crossfade the choropleth and the listings layer as the selected state changes, and — on
+  // returning to the landing view — refresh the choropleth's colors so any clusters just marked
+  // show up immediately.
   const prevSelectedStateRef = useRef(selectedState)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapInstance) return
     const isLanding = !selectedState
-    if (map.getLayer(STATES_FILL_LAYER_ID)) {
-      map.setLayoutProperty(STATES_FILL_LAYER_ID, 'visibility', isLanding ? 'visible' : 'none')
-      map.setLayoutProperty(STATES_LINE_LAYER_ID, 'visibility', isLanding ? 'visible' : 'none')
-    }
+    applyModeOpacity(map, isLanding)
+    // A popup pinned open on a listing shouldn't linger once its layer has faded away.
+    popupRef.current?.remove()
     const justReturned = isLanding && prevSelectedStateRef.current
     prevSelectedStateRef.current = selectedState
     if (!justReturned) return
@@ -405,35 +445,33 @@ export function MapView({ children, onMapReady }: MapViewProps) {
     <div className="map-view">
       <div ref={containerRef} className="map-view__canvas" />
       {mapInstance && children}
-      {!selectedState && (
-        <div className="us-states-landing-overlay">
-          <div className="us-states-landing__header">
-            <h1>STR Market Mapping</h1>
-            <p>{hoveredState ? `${hoveredState.name} — ${hoveredState.statusLabel} — click to view` : 'Click a state to begin'}</p>
+      <div className={`us-states-landing-overlay${selectedState ? ' us-states-landing-overlay--hidden' : ''}`}>
+        <div className="us-states-landing__header">
+          <h1>STR Market Mapping</h1>
+          <p>{hoveredState ? `${hoveredState.name} — ${hoveredState.statusLabel} — click to view` : 'Click a state to begin'}</p>
+        </div>
+        <div className="us-states-landing__legend">
+          <div className="us-states-landing__legend-title">Good/Great clusters</div>
+          <div className="us-states-landing__legend-row">
+            {GOOD_GREAT_BUCKETS.map((bucket) => (
+              <div key={bucket.label} className="us-states-landing__legend-item">
+                <span className="us-states-landing__legend-swatch" style={{ background: bucket.color }} />
+                {bucket.label}
+              </div>
+            ))}
           </div>
-          <div className="us-states-landing__legend">
-            <div className="us-states-landing__legend-title">Good/Great clusters</div>
-            <div className="us-states-landing__legend-row">
-              {GOOD_GREAT_BUCKETS.map((bucket) => (
-                <div key={bucket.label} className="us-states-landing__legend-item">
-                  <span className="us-states-landing__legend-swatch" style={{ background: bucket.color }} />
-                  {bucket.label}
-                </div>
-              ))}
+          <div className="us-states-landing__legend-row">
+            <div className="us-states-landing__legend-item">
+              <span className="us-states-landing__legend-swatch" style={{ background: EXPLORED_COLOR }} />
+              Explored
             </div>
-            <div className="us-states-landing__legend-row">
-              <div className="us-states-landing__legend-item">
-                <span className="us-states-landing__legend-swatch" style={{ background: EXPLORED_COLOR }} />
-                Explored
-              </div>
-              <div className="us-states-landing__legend-item">
-                <span className="us-states-landing__legend-swatch" style={{ background: UNEXPLORED_COLOR }} />
-                Unexplored
-              </div>
+            <div className="us-states-landing__legend-item">
+              <span className="us-states-landing__legend-swatch" style={{ background: UNEXPLORED_COLOR }} />
+              Unexplored
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
