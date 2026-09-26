@@ -4,9 +4,19 @@ import type { Listing } from '@/types/listing'
 
 // PostgREST caps rows per request (this project's is 1000, confirmed — a larger .range() just
 // comes back truncated at 1000 with no error) regardless of an unbounded select. Some states
-// (Texas: ~72K rows) need dozens of pages — fetched in parallel (see below), not sequentially,
-// or a big state would take over a minute of serial round-trips to load.
+// (Texas: ~72K rows, Florida: 160K+) need dozens to over a hundred pages — fetched in parallel
+// batches (see below), not sequentially, or a big state would take over a minute of serial
+// round-trips to load.
 const PAGE_SIZE = 1000
+
+// How many pages to fire in parallel per round. Starts small and doubles each round (capped)
+// until a round comes back with a short/empty page, confirming the true end — deliberately NOT
+// based on an upfront exact row count: `count: 'exact'` over this view reliably hits Postgres's
+// statement timeout for the largest states (confirmed against the live project — Florida's
+// exact count fails with error 57014 every time, while the same query with no count succeeds in
+// well under a second), which was silently turning "click Florida" into "no listings, an error".
+const INITIAL_BATCH_SIZE = 20
+const MAX_BATCH_SIZE = 100
 
 // Only the columns rowToListing actually reads — the live table has 40+ (ratings, amenities,
 // etc. the app doesn't use), and skipping them roughly halves the payload for large states.
@@ -68,40 +78,59 @@ function rowToListing(row: ListingRow, index: number): Listing | null {
   }
 }
 
-/** Fetches every listing for a state (by its full name, e.g. "Texas") from Supabase, paging past PostgREST's per-request row cap with parallel requests once the total count is known. */
-export async function fetchListingsForState(stateName: string): Promise<Listing[]> {
-  const { count, error: countError } = await supabase
+const PAGE_RETRIES = 3
+
+async function fetchPageOnce(stateName: string, from: number): Promise<ListingRow[]> {
+  const { data, error } = await supabase
     .from('listings')
-    .select('static_combined_property_id', { count: 'exact', head: true })
+    .select(SELECT_COLUMNS)
     .eq('state_name', stateName)
+    .range(from, from + PAGE_SIZE - 1)
+  if (error) throw new Error(error.message)
+  // SELECT_COLUMNS is built at runtime (a plain string, not a literal), so supabase-js's
+  // select-query-parser can't narrow the returned row's type from it — cast through unknown
+  // rather than force a direct (and, for the same reason, invalid) assertion.
+  return (data ?? []) as unknown as ListingRow[]
+}
 
-  if (countError) throw new Error(countError.message)
-  const total = count ?? 0
-  if (total === 0) return []
+// A single page failing (a dropped connection, a transient timeout) shouldn't sink the whole
+// state's load — retried a few times with a short backoff before giving up for real.
+async function fetchPage(stateName: string, from: number): Promise<ListingRow[]> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fetchPageOnce(stateName, from)
+    } catch (err) {
+      if (attempt >= PAGE_RETRIES) throw err
+      await new Promise((resolve) => setTimeout(resolve, 300 * attempt))
+    }
+  }
+}
 
-  const pageCount = Math.ceil(total / PAGE_SIZE)
-  const pages = await Promise.all(
-    Array.from({ length: pageCount }, (_, i) => {
-      const from = i * PAGE_SIZE
-      return supabase
-        .from('listings')
-        .select(SELECT_COLUMNS)
-        .eq('state_name', stateName)
-        .range(from, from + PAGE_SIZE - 1)
-    }),
-  )
-
+/** Fetches every listing for a state (by its full name, e.g. "Texas") from Supabase, paging past PostgREST's per-request row cap with parallel batches — see INITIAL_BATCH_SIZE for why this never asks for an exact row count first. */
+export async function fetchListingsForState(stateName: string): Promise<Listing[]> {
   const listings: Listing[] = []
-  pages.forEach(({ data, error }, pageIndex) => {
-    if (error) throw new Error(error.message)
-    ;(data ?? []).forEach((row, i) => {
-      // SELECT_COLUMNS is built at runtime (a plain string, not a literal), so supabase-js's
-      // select-query-parser can't narrow the returned row's type from it — cast through
-      // unknown rather than force a direct (and, for the same reason, invalid) assertion.
-      const listing = rowToListing(row as unknown as ListingRow, pageIndex * PAGE_SIZE + i)
-      if (listing) listings.push(listing)
+  let from = 0
+  let batchSize = INITIAL_BATCH_SIZE
+  let reachedEnd = false
+
+  while (!reachedEnd) {
+    const pageStarts = Array.from({ length: batchSize }, (_, i) => from + i * PAGE_SIZE)
+    const pages = await Promise.all(pageStarts.map((start) => fetchPage(stateName, start)))
+
+    pages.forEach((rows, i) => {
+      rows.forEach((row, j) => {
+        const listing = rowToListing(row, pageStarts[i] + j)
+        if (listing) listings.push(listing)
+      })
+      // Range-based pagination is monotonic — a page short of PAGE_SIZE (including empty) means
+      // every page after it is empty too, so this is a reliable end-of-data signal regardless
+      // of where in the batch it shows up.
+      if (rows.length < PAGE_SIZE) reachedEnd = true
     })
-  })
+
+    from += batchSize * PAGE_SIZE
+    batchSize = Math.min(batchSize * 2, MAX_BATCH_SIZE)
+  }
 
   return listings
 }
