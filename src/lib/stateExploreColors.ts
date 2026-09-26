@@ -34,12 +34,12 @@ function goodGreatColor(count: number): string {
 export function colorForStateSummary(summary: StateProjectSummary | undefined): string {
   const count = summary?.goodGreatCount ?? 0
   if (count > 0) return goodGreatColor(count)
-  return summary?.explored ? EXPLORED_COLOR : UNEXPLORED_COLOR
+  return summary?.hasActivity ? EXPLORED_COLOR : UNEXPLORED_COLOR
 }
 
 /** Hover label — the count for states with Good/Great clusters, otherwise the explored/unexplored status. */
 export function statusLabelForStateSummary(summary: StateProjectSummary | undefined): string {
   const count = summary?.goodGreatCount ?? 0
   if (count > 0) return `${count} Good/Great cluster${count === 1 ? '' : 's'}`
-  return summary?.explored ? 'Explored — no Good/Great clusters yet' : 'Unexplored'
+  return summary?.hasActivity ? 'Explored — no Good/Great clusters yet' : 'Unexplored'
 }
