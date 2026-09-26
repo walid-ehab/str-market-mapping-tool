@@ -50,7 +50,7 @@ const DRAW_DEFAULT_COLOR = '#3bb2d0'
 // How far below the state's own natural fit zoom counts as "zoomed out enough to leave" — a
 // fixed absolute zoom threshold would trigger inconsistently across a tiny state (Rhode Island)
 // vs. a huge one (Texas), so this is relative to each state's own fitBounds zoom instead.
-const ZOOM_OUT_MARGIN = 2
+const ZOOM_OUT_MARGIN = 3
 
 /**
  * Recolors Draw's polygon fill/outline by the cluster's confidence instead of Draw's single
@@ -158,7 +158,11 @@ export function PolygonDraw() {
     // Suppressed mid-draw (drawing a new polygon or editing an existing one's vertices) so
     // zooming out to see more context while drawing doesn't unexpectedly discard the
     // in-progress shape.
-    const handleZoomEnd = () => {
+    //
+    // Listens on 'zoom' (fires continuously through an in-progress scroll/gesture), not
+    // 'zoomend' (fires once, only after the zoom has fully settled) — so this triggers the
+    // instant the threshold is crossed mid-scroll, rather than waiting for the user to stop.
+    const handleZoom = () => {
       if (drawRef.current?.getMode() !== 'simple_select') return
       const bounds = datasetBounds(useAppStore.getState().listings)
       if (!bounds) return
@@ -166,10 +170,10 @@ export function PolygonDraw() {
       if (!camera || camera.zoom == null) return
       if (map.getZoom() >= camera.zoom - ZOOM_OUT_MARGIN) return
 
-      map.off('zoomend', handleZoomEnd)
+      map.off('zoom', handleZoom)
       useAppStore.getState().clearSelectedState()
     }
-    map.on('zoomend', handleZoomEnd)
+    map.on('zoom', handleZoom)
 
     const draw = new MapboxDraw({
       displayControlsDefault: false,
@@ -255,7 +259,7 @@ export function PolygonDraw() {
       drawEvents.off('draw.delete', handleDelete)
       drawEvents.off('draw.selectionchange', handleSelectionChange)
       map.off('style.load', handleStyleLoad)
-      map.off('zoomend', handleZoomEnd)
+      map.off('zoom', handleZoom)
       try {
         map.removeControl(draw)
       } catch {
