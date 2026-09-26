@@ -57,6 +57,9 @@ export function useStateProjectPersistence(): void {
   const explored = useAppStore((s) => s.explored)
 
   const debounceRef = useRef<number | undefined>(undefined)
+  // Tracks explored across renders so the toggle's own transition can still save even when it
+  // flips OFF (see the gate below, which would otherwise block that exact save).
+  const wasExploredRef = useRef(explored)
 
   useEffect(() => {
     // stateProjectHydrated gates this: without it, the initial load's own defaults (set
@@ -65,8 +68,20 @@ export function useStateProjectPersistence(): void {
     if (!selectedState || !stateProjectHydrated) return
     if (skipNextSaveRef.current) {
       skipNextSaveRef.current = false
+      wasExploredRef.current = explored
       return
     }
+
+    // Drawing/auto-detecting Maybe clusters, or tweaking settings, on a state that isn't (and
+    // wasn't, as of the previous render) explored is treated as scratch work and never reaches
+    // the database — only marking a cluster Good/Great (which itself sets explored true, see
+    // setClusterConfidence) or toggling Explored earns a save. Once a state is explored,
+    // everything about it autosaves normally, including the moment it's un-toggled — checking
+    // the previous value here, not just the current one, is what lets that specific transition
+    // still save instead of silently leaving a stale explored:true row behind.
+    const wasExplored = wasExploredRef.current
+    wasExploredRef.current = explored
+    if (!explored && !wasExplored) return
 
     window.clearTimeout(debounceRef.current)
     debounceRef.current = window.setTimeout(() => {
