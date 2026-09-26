@@ -550,12 +550,12 @@ button {
   font-size: 12px;
 }
 
-/* --- US states landing view --- */
+/* --- US states landing overlay (shown over the shared map when no state is selected) --- */
 
-.us-states-landing {
-  height: 100vh;
-  width: 100vw;
-  position: relative;
+.us-states-landing-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
 .us-states-landing__header {
@@ -628,11 +628,6 @@ button {
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.us-states-landing__canvas {
-  height: 100%;
-  width: 100%;
-}
-
 /* --- Map --- */
 
 .map-pane {
@@ -641,12 +636,15 @@ button {
 }
 
 .map-pane__placeholder {
-  height: 100%;
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--bg);
   color: var(--text-muted);
   font-size: 14px;
+  z-index: 1;
 }
 
 .map-view {

@@ -34,11 +34,6 @@ interface AppState {
   // the main dashboard renders, and scopes both the listings fetch and the clusters/settings
   // below. Not persisted itself (a fresh load always starts back at the US map).
   selectedState: string | null
-  // Set right before an auto zoom-out-triggered return to the landing map, so it can open at
-  // the same camera instead of snapping back to its default US-wide view — consumed (read once,
-  // then cleared) by UsStatesMap on mount. Left null for every other way of leaving a state
-  // (e.g. the "Change state" button), which should still reset to the default view.
-  pendingLandingCamera: { center: [number, number]; zoom: number } | null
 
   // The current dataset — always re-fetched from Supabase for the selected state, never
   // persisted itself (see useStateListings).
@@ -71,10 +66,6 @@ interface AppState {
 
   selectState: (stateName: string) => void
   clearSelectedState: () => void
-  /** Records the camera to reopen the landing map at, right before an auto zoom-out return. */
-  setPendingLandingCamera: (camera: { center: [number, number]; zoom: number }) => void
-  /** Reads and clears the pending camera in one step — called once by UsStatesMap on mount. */
-  consumePendingLandingCamera: () => { center: [number, number]; zoom: number } | null
 
   setLoadingDataset: (loading: boolean) => void
   setDatasetError: (error: string | null) => void
@@ -109,9 +100,8 @@ interface AppState {
   setStateProjectSaveError: (error: string | null) => void
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
+export const useAppStore = create<AppState>((set) => ({
   selectedState: null,
-  pendingLandingCamera: null,
 
   datasetFileName: null,
   datasetUploadedAt: null,
@@ -156,12 +146,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       explored: false,
     }),
   clearSelectedState: () => set({ selectedState: null }),
-  setPendingLandingCamera: (camera) => set({ pendingLandingCamera: camera }),
-  consumePendingLandingCamera: () => {
-    const camera = get().pendingLandingCamera
-    set({ pendingLandingCamera: null })
-    return camera
-  },
 
   setLoadingDataset: (loading) => set({ isLoadingDataset: loading }),
   setDatasetError: (error) => set({ datasetError: error }),
