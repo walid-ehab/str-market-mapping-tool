@@ -21,6 +21,11 @@ function normalizeClusters(clusters: Cluster[]): Cluster[] {
 }
 
 interface AppState {
+  // Which US state the user picked on the landing map — gates whether the landing view or
+  // the main dashboard renders. Not persisted (a fresh load always starts back at the US map);
+  // per-state saved data is a separate, later concern from this view-level selection.
+  selectedState: string | null
+
   // The current project — clusters and their settings. Persisted per project; switching
   // projects never touches another project's saved clusters.
   projectId: string | null
@@ -52,6 +57,9 @@ interface AppState {
   activeClusterId: string | null
 
   hasHydrated: boolean
+
+  selectState: (stateName: string) => void
+  clearSelectedState: () => void
 
   setLoadingDataset: (loading: boolean) => void
   setDatasetError: (error: string | null) => void
@@ -88,6 +96,8 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
+  selectedState: null,
+
   projectId: null,
   projectName: 'New Project',
   projectCreatedAt: Date.now(),
@@ -111,6 +121,9 @@ export const useAppStore = create<AppState>((set) => ({
   activeClusterId: null,
 
   hasHydrated: false,
+
+  selectState: (stateName) => set({ selectedState: stateName }),
+  clearSelectedState: () => set({ selectedState: null }),
 
   setLoadingDataset: (loading) => set({ isLoadingDataset: loading }),
   setDatasetError: (error) => set({ datasetError: error }),
