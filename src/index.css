@@ -71,6 +71,15 @@ button {
   margin: 0;
 }
 
+.sidebar__link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--brand-dark);
+  font-size: 13px;
+  text-decoration: underline;
+}
+
 .sidebar__section {
   border-top: 1px solid var(--border);
   padding-top: 16px;
@@ -125,39 +134,20 @@ button {
   gap: 10px;
 }
 
-/* --- Upload --- */
+/* --- Listings status --- */
 
-.upload-panel {
+.listings-status {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.upload-panel__button {
-  background: var(--accent);
-  color: white;
-  border: none;
-  border-radius: var(--radius);
-  padding: 10px 14px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.upload-panel__button:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.upload-panel__button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.upload-panel__meta {
+.listings-status__meta {
   font-size: 12px;
   color: var(--text-muted);
 }
 
-.upload-panel__error {
+.listings-status__error {
   font-size: 12px;
   color: var(--danger);
 }
@@ -334,92 +324,6 @@ button {
 }
 
 .cluster-row__delete:hover {
-  color: var(--danger);
-}
-
-/* --- Project switcher --- */
-
-.project-switcher {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.project-switcher__row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.project-switcher__label {
-  font-size: 13px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.project-switcher__name {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.project-switcher__name-input {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 600;
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  padding: 1px 4px;
-}
-
-.project-switcher__icon-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1;
-  padding: 2px 4px;
-  flex-shrink: 0;
-}
-
-.project-switcher__icon-btn:hover {
-  color: var(--accent);
-}
-
-.project-switcher__select {
-  width: 100%;
-  font-size: 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 5px 6px;
-  background: var(--panel-bg);
-  color: var(--text);
-}
-
-.project-switcher__actions {
-  display: flex;
-  gap: 6px;
-}
-
-.project-switcher__actions button {
-  flex: 1;
-  border: 1px solid var(--border);
-  background: var(--panel-bg);
-  border-radius: var(--radius);
-  padding: 5px 6px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.project-switcher__actions button:hover {
-  background: var(--bg);
-}
-
-.project-switcher__error {
-  font-size: 11px;
   color: var(--danger);
 }
 
@@ -624,6 +528,45 @@ button {
   background: none;
   color: var(--danger);
   font-size: 12px;
+}
+
+/* --- US states landing view --- */
+
+.us-states-landing {
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+}
+
+.us-states-landing__header {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 24px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+}
+
+.us-states-landing__header h1 {
+  font-size: 17px;
+  margin: 0 0 4px;
+}
+
+.us-states-landing__header p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.us-states-landing__canvas {
+  height: 100%;
+  width: 100%;
 }
 
 /* --- Map --- */

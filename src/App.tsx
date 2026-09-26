@@ -1,7 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { useState } from 'react'
 import { CollapsibleSection } from '@/components/CollapsibleSection'
-import { UploadButton } from '@/features/csv-upload/UploadButton'
 import { ClusterList } from '@/features/clusters/ClusterList'
 import { DeleteAllClustersButton } from '@/features/clusters/DeleteAllClustersButton'
 import { AnalyticsPanel } from '@/features/cluster-analytics/AnalyticsPanel'
@@ -13,20 +12,31 @@ import { Legend } from '@/features/map/Legend'
 import { MapProvider } from '@/features/map/MapContext'
 import { MapView } from '@/features/map/MapView'
 import { StyleSwitcher } from '@/features/map/StyleSwitcher'
-import { usePersistence } from '@/features/persistence/usePersistence'
+import { useStateProjectPersistence } from '@/features/persistence/useStateProjectPersistence'
 import { PolygonDraw } from '@/features/polygon-draw/PolygonDraw'
-import { ProjectSwitcher } from '@/features/projects/ProjectSwitcher'
 import { GenerateReportButton } from '@/features/report/GenerateReportButton'
 import { ThresholdControl } from '@/features/revenue-tiering/ThresholdControl'
+import { useStateListings } from '@/features/state-listings/useStateListings'
+import { UsStatesMap } from '@/features/state-select/UsStatesMap'
 import { useAppStore } from '@/store/useAppStore'
 
 function App() {
-  usePersistence()
-  const hasHydrated = useAppStore((s) => s.hasHydrated)
+  useStateProjectPersistence()
+  useStateListings()
   const hasDataset = useAppStore((s) => s.listings.length > 0)
+  const isLoadingDataset = useAppStore((s) => s.isLoadingDataset)
+  const datasetError = useAppStore((s) => s.datasetError)
+  const listingCount = useAppStore((s) => s.listings.length)
+  const selectedState = useAppStore((s) => s.selectedState)
+  const clearSelectedState = useAppStore((s) => s.clearSelectedState)
+  const stateProjectSaveError = useAppStore((s) => s.stateProjectSaveError)
   // Owned here (not inside MapView) so the cluster list in the sidebar — a sibling of
   // MapView, not one of its children — can also reach the map, e.g. to fly to a cluster.
   const [mapInstance, setMapInstance] = useState<MapLibreMap | null>(null)
+
+  if (!selectedState) {
+    return <UsStatesMap />
+  }
 
   return (
     <MapProvider value={mapInstance}>
@@ -34,16 +44,20 @@ function App() {
         <aside className="sidebar">
           <div className="sidebar__header">
             <h1>STR Market Mapping</h1>
-            <p>Upload a listings CSV to plot it on the map.</p>
+            <p>
+              {selectedState} · <button className="sidebar__link-button" onClick={clearSelectedState}>Change state</button>
+            </p>
           </div>
 
-          <CollapsibleSection title="Step 1 · Select or Create a Project">
-            <ProjectSwitcher />
-          </CollapsibleSection>
-
           <div className="sidebar__section">
-            <h2>Step 2 · Upload a CSV</h2>
-            <UploadButton />
+            <h2>Listings</h2>
+            <div className="listings-status">
+              {isLoadingDataset && <div className="listings-status__meta">Loading {selectedState} listings…</div>}
+              {datasetError && <div className="listings-status__error">{datasetError}</div>}
+              {!isLoadingDataset && !datasetError && hasDataset && (
+                <div className="listings-status__meta">{listingCount.toLocaleString()} listings loaded</div>
+              )}
+            </div>
           </div>
 
           {hasDataset && (
@@ -73,6 +87,9 @@ function App() {
                     <DeleteAllClustersButton />
                   </div>
                 </div>
+                {stateProjectSaveError && (
+                  <div className="listings-status__error">Not saved: {stateProjectSaveError}</div>
+                )}
                 <ClusterList />
                 <GenerateReportButton />
                 <AnalyticsPanel />
@@ -82,16 +99,16 @@ function App() {
         </aside>
 
         <main className="map-pane">
-          {!hasHydrated ? (
-            <div className="map-pane__placeholder">Loading…</div>
-          ) : hasDataset ? (
+          {hasDataset ? (
             <MapView onMapReady={setMapInstance}>
               <StyleSwitcher />
               <Legend />
               <PolygonDraw />
             </MapView>
           ) : (
-            <div className="map-pane__placeholder">Upload a CSV to get started.</div>
+            <div className="map-pane__placeholder">
+              {isLoadingDataset ? `Loading ${selectedState} listings…` : datasetError || 'No listings loaded.'}
+            </div>
           )}
         </main>
       </div>
