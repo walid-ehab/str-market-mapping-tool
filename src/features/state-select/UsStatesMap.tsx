@@ -81,11 +81,15 @@ export function UsStatesMap() {
   useEffect(() => {
     if (!containerRef.current) return
 
+    // An auto zoom-out-triggered return leaves a camera to reopen at instead of the default
+    // US-wide view, so the handoff plays as one continuous zoom rather than a snap back out.
+    const pendingCamera = useAppStore.getState().consumePendingLandingCamera()
+
     const map = new MapLibreMap({
       container: containerRef.current,
       style: getMapStyle('carto-positron').style,
-      center: DEFAULT_CENTER,
-      zoom: DEFAULT_ZOOM,
+      center: pendingCamera?.center ?? DEFAULT_CENTER,
+      zoom: pendingCamera?.zoom ?? DEFAULT_ZOOM,
     })
     mapRef.current = map
 
