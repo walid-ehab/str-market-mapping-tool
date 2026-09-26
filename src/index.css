@@ -694,6 +694,20 @@ button {
   margin-left: 360px;
 }
 
+/* The distance scale (ScaleControl, always mounted — see MapView) is only meaningful once
+   viewing a state's own listings; on the zoomed-out US choropleth it's just clutter over the
+   corner of the map, so it fades out along with everything else that's dashboard-only. */
+.map-view .maplibregl-ctrl-bottom-left {
+  transition: margin-left 300ms ease, opacity 300ms ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.map-view--dashboard .maplibregl-ctrl-bottom-left {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* mapbox-gl-draw renders its buttons with mapbox-gl's original `mapboxgl-ctrl*` class names.
    maplibre-gl.css sets `pointer-events: none` on its own `.maplibregl-ctrl-top-left` (etc.)
    wrapper and re-enables it only for `.maplibregl-ctrl` — never `.mapboxgl-ctrl` — because we
