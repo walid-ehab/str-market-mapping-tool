@@ -748,10 +748,13 @@ button {
 }
 
 /* Stacked below MapLibre's own top-left control group (the polygon draw + trash buttons,
-   ~33px tall) instead of beside it, so the two never overlap regardless of viewport width. */
+   ~33px tall) instead of beside it, so the two never overlap regardless of viewport width.
+   Offset past the sidebar's width too — this only ever renders while a state is selected (see
+   StyleSwitcher/App.tsx), i.e. only while the sidebar itself is showing, on top of which it
+   would otherwise sit (it has a higher z-index than .sidebar so it can layer over the map). */
 .map-overlay--top-left {
   top: 45px;
-  left: 12px;
+  left: 372px;
 }
 
 /* Stacked below the top-right NavigationControl (zoom in/out, ~68px tall incl. margin). */
