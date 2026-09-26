@@ -37,7 +37,7 @@ button {
 }
 
 .app-shell {
-  display: flex;
+  position: relative;
   height: 100vh;
   width: 100vw;
   overflow: hidden;
@@ -45,7 +45,14 @@ button {
 
 /* --- Sidebar --- */
 
+/* Floats over the map instead of sitting beside it in a flex row, so showing/hiding it (see
+   --hidden below) never changes the map pane's own size — that resize was what made the map
+   visibly jump sideways the instant the sidebar disappeared. It's always mounted; only its
+   opacity animates. */
 .sidebar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 2;
   width: 360px;
   min-width: 360px;
   background: var(--panel-bg);
@@ -58,6 +65,13 @@ button {
   scrollbar-gutter: stable;
   padding: 20px;
   gap: 20px;
+  opacity: 1;
+  transition: opacity 300ms ease;
+}
+
+.sidebar--hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .sidebar__header h1 {
@@ -556,6 +570,12 @@ button {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  opacity: 1;
+  transition: opacity 400ms ease;
+}
+
+.us-states-landing-overlay--hidden {
+  opacity: 0;
 }
 
 .us-states-landing__header {
@@ -630,9 +650,11 @@ button {
 
 /* --- Map --- */
 
+/* Always full-bleed regardless of the sidebar — see .sidebar above for why it floats over this
+   rather than sharing a flex row with it. */
 .map-pane {
-  flex: 1;
-  position: relative;
+  position: absolute;
+  inset: 0;
 }
 
 .map-pane__placeholder {
