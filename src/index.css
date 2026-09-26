@@ -680,6 +680,20 @@ button {
   width: 100%;
 }
 
+/* The map canvas is always full-bleed underneath the sidebar (see .sidebar/.map-pane), so its
+   own top-left/bottom-left controls (mapbox-gl-draw's toolbar, the scale control) would
+   otherwise render right where the sidebar covers them. Shift them clear of it in dashboard
+   mode, animated in step with the sidebar's own fade (see .sidebar's transition). */
+.map-view .maplibregl-ctrl-top-left,
+.map-view .maplibregl-ctrl-bottom-left {
+  transition: margin-left 300ms ease;
+}
+
+.map-view--dashboard .maplibregl-ctrl-top-left,
+.map-view--dashboard .maplibregl-ctrl-bottom-left {
+  margin-left: 360px;
+}
+
 /* mapbox-gl-draw renders its buttons with mapbox-gl's original `mapboxgl-ctrl*` class names.
    maplibre-gl.css sets `pointer-events: none` on its own `.maplibregl-ctrl-top-left` (etc.)
    wrapper and re-enables it only for `.maplibregl-ctrl` — never `.mapboxgl-ctrl` — because we
