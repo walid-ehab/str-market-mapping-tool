@@ -54,6 +54,7 @@ export interface ListingRow {
   has_gym: boolean | null
   has_pets_allowed: boolean | null
   has_kitchen: boolean | null
+  has_parking: boolean | null
   airbnb_listing_url: string | null
 }
 

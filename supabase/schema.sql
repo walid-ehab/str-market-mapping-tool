@@ -3,102 +3,62 @@
 -- Run this once in the Supabase project's SQL Editor (Dashboard → SQL Editor → New query).
 -- Re-running is safe: every statement is idempotent (create-if-not-exists / drop-then-create).
 --
--- Two tables:
---   listings       Already exists in this project as a VIEW (confirmed by Postgres refusing
---                  to index it directly — "not supported for views") — a near-verbatim load
---                  of the Snowflake CSV export (876K+ rows, multiple states), column names
---                  lowercased. The block below documents its shape for reference only; the
---                  `create table if not exists` is a no-op (a relation with this name
---                  already exists), so no constraint declared below is actually enforced.
+-- Two tables/views:
+--   listings       Already exists in this project as a VIEW over a base table `public.temp`
+--                  (confirmed via `select pg_get_viewdef('public.listings'::regclass, true)`),
+--                  itself a near-verbatim load of the Snowflake CSV export (876K+ rows,
+--                  multiple states), column names lowercased. The view also derives
+--                  airbnb_listing_url from static_combined_property_id.
+--                  Nothing below creates or alters `listings`/`temp` — this section is
+--                  reference documentation only, plus one index on the real base table.
 --   state_projects Does not exist yet. One row per US state: that state's saved clusters +
 --                  map/report settings — the direct analog of today's per-project IndexedDB
 --                  record, keyed by state instead of an arbitrary project id.
 
 -- ---------------------------------------------------------------------------
--- listings (documentation only — table already exists with this shape)
+-- listings (reference only — describes the existing view/base table, changes nothing)
 -- ---------------------------------------------------------------------------
 
-create table if not exists public.listings (
-  static_combined_property_id text,
-  title text,
-  property_type text,
-  real_estate_type text,
-  listing_type text,
-  property_host_type text,
-  state_name text,
-  city_name text,
-  postal_code_name text,
-  airdna_market text,
-  airdna_submarket text,
-  latitude double precision,
-  longitude double precision,
-  display_exact_location text,
-  location_type text,
-  -- Numeric-looking fields below are stored as TEXT in the live table (a straight lowercase
-  -- of the CSV export) — the app's mapping layer parses them with Number(), same as csv.ts
-  -- does for uploaded CSVs. Left as text here rather than silently redeclaring a type the
-  -- live column doesn't actually have.
-  bedrooms text,
-  bathrooms text,
-  accommodates integer,
-  minimum_stay text,
-  average_daily_rate_ltm numeric,
-  cleaning_fee text,
-  cleaning_fee_ltm numeric,
-  revenue_ltm numeric,
-  revenue_potential_ltm numeric,
-  occupancy_rate_ltm numeric,
-  active_listing_nights_ltm numeric,
-  number_of_reservations_ltm numeric,
-  reviews_count text,
-  -- Also text ("True"/"False"), not boolean, in the live table.
-  superhost text,
-  vrbo_listing_url text,
-  booking_listing_url text,
-  rating_overall text,
-  rating_communication text,
-  rating_accuracy text,
-  rating_cleanliness text,
-  rating_checkin text,
-  rating_location text,
-  rating_value text,
-  has_pool boolean,
-  has_hottub boolean,
-  has_aircon boolean,
-  has_gym boolean,
-  has_pets_allowed boolean,
-  has_kitchen boolean,
-  airbnb_listing_url text
-);
+-- public.listings (view) columns, for reference:
+--   static_combined_property_id, title, property_type, real_estate_type, listing_type,
+--   property_host_type, state_name, city_name, postal_code_name, airdna_market,
+--   airdna_submarket, latitude, longitude, display_exact_location, location_type,
+--   bedrooms, bathrooms, accommodates, minimum_stay, average_daily_rate_ltm, cleaning_fee,
+--   cleaning_fee_ltm, revenue_ltm, revenue_potential_ltm, occupancy_rate_ltm,
+--   active_listing_nights_ltm, number_of_reservations_ltm, reviews_count, superhost,
+--   vrbo_listing_url, booking_listing_url, rating_overall, rating_communication,
+--   rating_accuracy, rating_cleanliness, rating_checkin, rating_location, rating_value,
+--   has_pool, has_hottub, has_aircon, has_gym, has_pets_allowed, has_kitchen, has_parking,
+--   airbnb_listing_url (computed: 'https://www.airbnb.com/rooms/' || id suffix, for ids
+--   prefixed 'abnb_'; null otherwise)
+--
+-- Several fields that look numeric/boolean (bedrooms, bathrooms, reviews_count, ratings,
+-- superhost, etc.) are stored as TEXT — the app's mapping layer parses them with Number()
+-- the same way csv.ts already does for uploaded CSVs.
 
 -- The app's core query shape is "give me this state's listings" — this index makes that
--- fast across 876K+ rows. Guarded because public.listings turned out to be a VIEW in this
--- project, not an ordinary table — Postgres can't index a view directly. If it's a plain
--- view over a real base table, add the index on that base table instead (run
--- `select pg_get_viewdef('public.listings'::regclass, true);` to see what it's built from).
+-- fast across 876K+ rows. Targets public.temp (the view's base table), since Postgres can't
+-- index a view directly. Guarded in case `temp` isn't an ordinary table either, or isn't in
+-- the public schema — if this notice fires, find the real base table and tell me its name.
 do $$
 begin
   if exists (
     select 1 from pg_class
-    where relname = 'listings' and relnamespace = 'public'::regnamespace and relkind = 'r'
+    where relname = 'temp' and relnamespace = 'public'::regnamespace and relkind = 'r'
   ) then
-    execute 'create index if not exists listings_state_name_idx on public.listings (state_name)';
+    execute 'create index if not exists temp_state_name_idx on public.temp (state_name)';
   else
-    raise notice 'Skipping index: public.listings is not an ordinary table (it is a view) — index its underlying base table instead.';
+    raise notice 'Skipping index: public.temp is not an ordinary table — confirm the listings view''s real base table and its schema.';
   end if;
 end $$;
 
-alter table public.listings enable row level security;
-
--- Open to anon for now (matches this project's current live policy) — the whole dataset is
--- readable by anyone holding the anon key, which ships in the public client bundle. Revisit
--- if/when this data needs to stop being publicly reachable.
-drop policy if exists "Allow read access to listings" on public.listings;
-create policy "Allow read access to listings"
-  on public.listings
-  for select
-  to anon, authenticated
-  using (true);
+-- Access control for `listings` is a standard view GRANT/REVOKE, not RLS — RLS applies to
+-- tables, and a view queried by role X only respects row-level security on its base table
+-- when the view is created with security_invoker (Postgres 15+); otherwise it runs with the
+-- view owner's privileges regardless of who queries it. Whatever grants already exist on
+-- this view/table are what's currently allowing anon to read it — nothing here changes that.
+-- Revisit deliberately (via REVOKE on the view, or security_invoker + RLS on temp) once the
+-- access-model decision (open vs. authenticated-only) is made.
 
 -- ---------------------------------------------------------------------------
 -- state_projects
