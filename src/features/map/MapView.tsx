@@ -45,6 +45,16 @@ export const US_BOUNDS: [[number, number], [number, number]] = [
   [-66, 50],
 ]
 
+// Matches .sidebar's width in index.css. The map canvas is always full-bleed underneath the
+// sidebar (see .map-pane), so without this, fitBounds/getCenter would treat that hidden left
+// strip as visible — pushing whatever it's centering off into the region the sidebar covers.
+const SIDEBAR_WIDTH = 360
+
+/** Padding for a fitBounds/setPadding call, given whether the sidebar is currently showing. */
+function contentPadding(isDashboard: boolean, extra = 48) {
+  return { top: extra, right: extra, bottom: extra, left: (isDashboard ? SIDEBAR_WIDTH : 0) + extra }
+}
+
 // How the choropleth and the listings layer crossfade into/out of each other on a mode switch —
 // applied as each layer's own paint transition (see ensure*Layer below) rather than an ordinary
 // CSS transition, since these are canvas-rendered MapLibre layers, not DOM elements.
@@ -400,13 +410,15 @@ export function MapView({ children, onMapReady }: MapViewProps) {
     onMapReady?.(mapInstance)
   }, [mapInstance, onMapReady])
 
-  // Fit to the dataset's bounds once, right after a new state's listings are loaded.
+  // Fit to the dataset's bounds once, right after a new state's listings are loaded. By now the
+  // sidebar is already showing (selectedState was set to get here at all), so the fit needs to
+  // center within the visible (non-sidebar) portion of the map, not its full underlying width.
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapInstance || rawListings.length === 0) return
     const bounds = datasetBounds(rawListings)
     if (!bounds) return
-    map.fitBounds([bounds.sw, bounds.ne], { padding: 48, duration: 0, maxZoom: 12 })
+    map.fitBounds([bounds.sw, bounds.ne], { padding: contentPadding(true), duration: 0, maxZoom: 12 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapInstance, rawListings.length])
 
@@ -419,6 +431,9 @@ export function MapView({ children, onMapReady }: MapViewProps) {
     if (!map || !mapInstance) return
     const isLanding = !selectedState
     applyModeOpacity(map, isLanding)
+    // Keeps the map's own notion of "center" aware of the sidebar's hidden strip going forward
+    // (e.g. scroll-to-zoom re-centering), independent of any one-off fitBounds call above.
+    map.easeTo({ padding: contentPadding(!isLanding, 0), duration: LAYER_FADE.duration })
     // A popup pinned open on a listing shouldn't linger once its layer has faded away.
     popupRef.current?.remove()
     const justReturned = isLanding && prevSelectedStateRef.current
@@ -442,7 +457,7 @@ export function MapView({ children, onMapReady }: MapViewProps) {
   }, [selectedState, mapInstance])
 
   return (
-    <div className="map-view">
+    <div className={`map-view${selectedState ? ' map-view--dashboard' : ''}`}>
       <div ref={containerRef} className="map-view__canvas" />
       {mapInstance && children}
       <div className={`us-states-landing-overlay${selectedState ? ' us-states-landing-overlay--hidden' : ''}`}>
