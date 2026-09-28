@@ -80,11 +80,23 @@ function rowToListing(row: ListingRow, index: number): Listing | null {
 
 const PAGE_RETRIES = 3
 
+// Excluded entirely from the map — not just filtered client-side — so pagination counts rows
+// that were never going to be shown, and a "row short of PAGE_SIZE" end-of-data signal still
+// lines up correctly with what's actually returned. Each value is double-quoted in the PostgREST
+// `in.()` filter below so a value containing a reserved character (e.g. the "/" here) is taken
+// as one literal string rather than parsed as a delimiter.
+const EXCLUDED_REAL_ESTATE_TYPES = ['Apt/Condo/Loft']
+
 async function fetchPageOnce(stateName: string, from: number): Promise<ListingRow[]> {
+  const excludedList = EXCLUDED_REAL_ESTATE_TYPES.map((type) => `"${type}"`).join(',')
   const { data, error } = await supabase
     .from('listings')
     .select(SELECT_COLUMNS)
     .eq('state_name', stateName)
+    // `real_estate_type.not.in.(...)` alone would also silently drop any listing where the
+    // column is NULL (SQL's `NOT (NULL IN (...))` evaluates to NULL, which a WHERE clause
+    // treats as non-matching) — explicitly keeping NULLs alongside the exclusion avoids that.
+    .or(`real_estate_type.is.null,real_estate_type.not.in.(${excludedList})`)
     .range(from, from + PAGE_SIZE - 1)
   if (error) throw new Error(error.message)
   // SELECT_COLUMNS is built at runtime (a plain string, not a literal), so supabase-js's
