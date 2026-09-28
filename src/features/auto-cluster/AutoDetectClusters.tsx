@@ -73,10 +73,18 @@ export function AutoDetectClusters() {
           <input
             type="range"
             min={0.1}
-            max={3}
+            max={6}
+            step={0.1}
+            value={Math.min(maxDistanceMiles, 6)}
+            onChange={(e) => setMaxDistanceMiles(Number(e.target.value))}
+          />
+          <input
+            type="number"
+            className="filter-control__number"
+            min={0.1}
             step={0.1}
             value={maxDistanceMiles}
-            onChange={(e) => setMaxDistanceMiles(Number(e.target.value))}
+            onChange={(e) => setMaxDistanceMiles(Math.max(0.1, Number(e.target.value) || 0.1))}
           />
         </div>
       </div>
