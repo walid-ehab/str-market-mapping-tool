@@ -18,6 +18,7 @@ export interface Listing {
   occupancyRateLtm: number | null
   listingUrl: string | null
   superhost: boolean
+  hasPool: boolean
 }
 
 export type RevenueTierId = 'below' | 'q1' | 'q2' | 'q3' | 'q4'

@@ -11,6 +11,8 @@ export interface ClusterStats {
   avgOccupancy: number | null
   aboveThresholdCount: number
   pctAboveThreshold: number | null
+  /** Share of the currently shown listings with a pool — respects active filters, same as avgRevenue/avgOccupancy. */
+  pctHasPool: number | null
 }
 
 /** Shared by the in-app analytics panel and the printable report so both show identical numbers. */
@@ -18,6 +20,7 @@ export function computeClusterStats(allListings: EnrichedListing[], shownListing
   const avgRevenue = average(shownListings.map((l) => l.revenuePotentialLtm).filter((v): v is number => v !== null))
   const avgOccupancy = average(shownListings.map((l) => l.occupancyRateLtm).filter((v): v is number => v !== null))
   const aboveThresholdCount = allListings.filter((l) => l.revenueTierId !== 'below').length
+  const hasPoolCount = shownListings.filter((l) => l.hasPool).length
 
   return {
     totalListings: allListings.length,
@@ -27,5 +30,6 @@ export function computeClusterStats(allListings: EnrichedListing[], shownListing
     avgOccupancy,
     aboveThresholdCount,
     pctAboveThreshold: shareOf(aboveThresholdCount, allListings.length),
+    pctHasPool: shareOf(hasPoolCount, shownListings.length),
   }
 }

@@ -37,6 +37,7 @@ const SELECT_COLUMNS = [
   'revenue_potential_ltm',
   'occupancy_rate_ltm',
   'superhost',
+  'has_pool',
   'airbnb_listing_url',
   'vrbo_listing_url',
   'booking_listing_url',
@@ -75,6 +76,7 @@ function rowToListing(row: ListingRow, index: number): Listing | null {
     occupancyRateLtm: row.occupancy_rate_ltm,
     listingUrl: mergeListingUrl(row),
     superhost: (row.superhost || '').toUpperCase() === 'TRUE',
+    hasPool: row.has_pool ?? false,
   }
 }
 
