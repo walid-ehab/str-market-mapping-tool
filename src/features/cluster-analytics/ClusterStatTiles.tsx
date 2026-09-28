@@ -37,6 +37,12 @@ export function ClusterStatTiles({ stats, revenueThreshold, variant = 'full' }: 
       <span className="stat-tile__value">{formatPercent(stats.avgOccupancy)}</span>
     </div>
   )
+  const poolTile = (
+    <div key="pool" className="stat-tile" title="Share of the currently shown listings with a pool">
+      <span className="stat-tile__label">Has Pool</span>
+      <span className="stat-tile__value">{formatPercent(stats.pctHasPool)}</span>
+    </div>
+  )
   const aboveTile = (
     <div key="above" className="stat-tile" title="Of all listings in this polygon, regardless of active filters">
       <span className="stat-tile__label">Above {formatK(revenueThreshold)}</span>
@@ -51,8 +57,8 @@ export function ClusterStatTiles({ stats, revenueThreshold, variant = 'full' }: 
 
   const tiles =
     variant === 'report'
-      ? [totalTile, aboveTile, revenueTile, occupancyTile]
-      : [totalTile, listingsTile, revenueTile, occupancyTile, aboveTile]
+      ? [totalTile, aboveTile, revenueTile, occupancyTile, poolTile]
+      : [totalTile, listingsTile, revenueTile, occupancyTile, poolTile, aboveTile]
 
   return <div className="analytics-panel__stats">{tiles}</div>
 }
