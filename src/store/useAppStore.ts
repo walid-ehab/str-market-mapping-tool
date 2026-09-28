@@ -34,6 +34,12 @@ interface AppState {
   // the main dashboard renders, and scopes both the listings fetch and the clusters/settings
   // below. Not persisted itself (a fresh load always starts back at the US map).
   selectedState: string | null
+  // True only for the span of the "Change state" button's own animated flight back to the US
+  // view — lets PolygonDraw's auto zoom-out-return threshold (which the button's fitBounds
+  // necessarily flies straight through) stay quiet during that specific flight, instead of firing
+  // its own clearSelectedState() mid-animation, which would cancel the button's own in-progress
+  // camera flight. See App.tsx's handleChangeState and PolygonDraw's handleZoom.
+  isNavigatingToLanding: boolean
 
   // The current dataset — always re-fetched from Supabase for the selected state, never
   // persisted itself (see useStateListings).
@@ -66,6 +72,7 @@ interface AppState {
 
   selectState: (stateName: string) => void
   clearSelectedState: () => void
+  setIsNavigatingToLanding: (isNavigating: boolean) => void
 
   setLoadingDataset: (loading: boolean) => void
   setDatasetError: (error: string | null) => void
@@ -102,6 +109,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   selectedState: null,
+  isNavigatingToLanding: false,
 
   datasetFileName: null,
   datasetUploadedAt: null,
@@ -146,6 +154,7 @@ export const useAppStore = create<AppState>((set) => ({
       explored: false,
     }),
   clearSelectedState: () => set({ selectedState: null }),
+  setIsNavigatingToLanding: (isNavigating) => set({ isNavigatingToLanding: isNavigating }),
 
   setLoadingDataset: (loading) => set({ isLoadingDataset: loading }),
   setDatasetError: (error) => set({ datasetError: error }),

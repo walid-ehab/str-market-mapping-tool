@@ -7,6 +7,7 @@ import { simplify } from '@turf/simplify'
 import type { Feature, Polygon, Position } from 'geojson'
 import { v4 as uuidv4 } from 'uuid'
 import { CLUSTER_CONFIDENCE_COLORS, DEFAULT_CLUSTER_CONFIDENCE } from '@/lib/clusterConfidence'
+import { nameClusterByCities } from '@/lib/clusterNaming'
 import type { Cluster } from '@/types/cluster'
 import type { Listing } from '@/types/listing'
 
@@ -76,9 +77,10 @@ function hullRing(coords: Position[], bufferMiles: number, simplifyToleranceMile
 /**
  * Groups listings into clusters by geographic density (DBSCAN) and wraps each group in a
  * polygon ring, ready to drop straight into the app store alongside manually-drawn clusters —
- * same shape, same default ("Maybe") confidence, fully editable afterward.
+ * same shape, same default ("Maybe") confidence, fully editable afterward. Returned largest
+ * (by listing count) first, and named after the city/cities each group falls in.
  */
-export function detectClusters(listings: Listing[], options: AutoClusterOptions, existingClusterCount: number): Cluster[] {
+export function detectClusters(listings: Listing[], options: AutoClusterOptions, existingNames: Set<string>): Cluster[] {
   const withCoords = listings.filter((l) => Number.isFinite(l.latitude) && Number.isFinite(l.longitude))
   if (withCoords.length === 0) return []
 
@@ -88,24 +90,31 @@ export function detectClusters(listings: Listing[], options: AutoClusterOptions,
     minPoints: options.minListings,
   })
 
-  const coordsByCluster = new Map<number, Position[]>()
-  for (const feature of clustered.features) {
+  const groupsById = new Map<number, Listing[]>()
+  clustered.features.forEach((feature, i) => {
     const clusterId = feature.properties?.cluster
-    if (clusterId === undefined || feature.properties?.dbscan === 'noise') continue
-    const coords = coordsByCluster.get(clusterId) ?? []
-    coords.push(feature.geometry.coordinates)
-    coordsByCluster.set(clusterId, coords)
-  }
+    if (clusterId === undefined || feature.properties?.dbscan === 'noise') return
+    const group = groupsById.get(clusterId) ?? []
+    group.push(withCoords[i])
+    groupsById.set(clusterId, group)
+  })
 
+  // Largest groups (most listings) first — matches the order they're then shown in the list.
+  const groups = [...groupsById.values()].sort((a, b) => b.length - a.length)
+
+  const usedNames = new Set(existingNames)
   const clusters: Cluster[] = []
-  let nextNumber = existingClusterCount
-  for (const coords of coordsByCluster.values()) {
+  let fallbackNumber = existingNames.size
+  for (const group of groups) {
+    const coords: Position[] = group.map((l) => [l.longitude, l.latitude])
     const ring = hullRing(coords, options.bufferMiles, options.simplifyToleranceMiles)
     if (!ring) continue
-    nextNumber += 1
+    fallbackNumber += 1
+    const name = nameClusterByCities(group, usedNames, fallbackNumber)
+    usedNames.add(name)
     clusters.push({
       id: uuidv4(),
-      name: `Cluster ${nextNumber}`,
+      name,
       confidence: DEFAULT_CLUSTER_CONFIDENCE,
       color: CLUSTER_CONFIDENCE_COLORS[DEFAULT_CLUSTER_CONFIDENCE],
       ring,
