@@ -44,12 +44,29 @@ function App() {
   const [displayState, setDisplayState] = useState(selectedState)
   if (selectedState && selectedState !== displayState) setDisplayState(selectedState)
 
+  const setIsNavigatingToLanding = useAppStore((s) => s.setIsNavigatingToLanding)
+
   // Unlike the auto zoom-out-triggered return (which just holds the current camera — see
   // PolygonDraw), this is a deliberate "I'm done" click, so it gets its own animated flight back
   // out to the full US view rather than leaving the camera wherever the state's dashboard had it.
+  // clearSelectedState() waits for that flight to land (moveend) rather than firing immediately:
+  // MapView's own mode-switch effect calls map.easeTo() to settle the sidebar-aware padding, and
+  // calling that concurrently with this fitBounds would cancel it mid-flight, freezing the camera
+  // wherever it happened to be. isNavigatingToLanding covers the same risk from the other
+  // direction: this flight necessarily flies through PolygonDraw's own auto zoom-out threshold,
+  // which would otherwise fire its own premature clearSelectedState() the instant the zoom crosses
+  // it, well before this flight actually lands.
   const handleChangeState = () => {
-    mapInstance?.fitBounds(US_BOUNDS, { padding: 40, duration: 900 })
-    clearSelectedState()
+    if (!mapInstance) {
+      clearSelectedState()
+      return
+    }
+    setIsNavigatingToLanding(true)
+    mapInstance.once('moveend', () => {
+      clearSelectedState()
+      setIsNavigatingToLanding(false)
+    })
+    mapInstance.fitBounds(US_BOUNDS, { padding: 40, duration: 900 })
   }
 
   return (

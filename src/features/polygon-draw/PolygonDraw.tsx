@@ -6,7 +6,8 @@ import { useEffect, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { useMapInstance } from '@/features/map/MapContext'
 import { CLUSTER_CONFIDENCE_COLORS, DEFAULT_CLUSTER_CONFIDENCE } from '@/lib/clusterConfidence'
-import { datasetBounds } from '@/lib/geo'
+import { nameClusterByCities } from '@/lib/clusterNaming'
+import { datasetBounds, listingsInsideRing } from '@/lib/geo'
 import { useAppStore } from '@/store/useAppStore'
 import type { Cluster } from '@/types/cluster'
 
@@ -164,6 +165,10 @@ export function PolygonDraw() {
     // instant the threshold is crossed mid-scroll, rather than waiting for the user to stop.
     const handleZoom = () => {
       if (drawRef.current?.getMode() !== 'simple_select') return
+      // The "Change state" button's own return flight (see App.tsx) necessarily flies through
+      // this same threshold — don't preempt it with a second, premature clearSelectedState() that
+      // would cancel its in-progress camera animation mid-flight.
+      if (useAppStore.getState().isNavigatingToLanding) return
       const bounds = datasetBounds(useAppStore.getState().listings)
       if (!bounds) return
       const camera = map.cameraForBounds([bounds.sw, bounds.ne], { padding: 48 })
@@ -194,10 +199,12 @@ export function PolygonDraw() {
       if (!feature) return
       const ring = feature.geometry.coordinates[0] as Position[]
       const id = String(feature.id ?? uuidv4())
-      const existingCount = useAppStore.getState().clusters.length
+      const state = useAppStore.getState()
+      const usedNames = new Set(state.clusters.map((c) => c.name))
+      const listingsWithin = listingsInsideRing(state.listings, ring)
       const cluster: Cluster = {
         id,
-        name: `Cluster ${existingCount + 1}`,
+        name: nameClusterByCities(listingsWithin, usedNames, state.clusters.length + 1),
         confidence: DEFAULT_CLUSTER_CONFIDENCE,
         color: CLUSTER_CONFIDENCE_COLORS[DEFAULT_CLUSTER_CONFIDENCE],
         ring,

@@ -16,7 +16,6 @@ import { useAppStore } from '@/store/useAppStore'
 export function AutoDetectClusters() {
   const listings = useAppStore((s) => s.listings)
   const revenueThreshold = useAppStore((s) => s.revenueThreshold)
-  const clusterCount = useAppStore((s) => s.clusters.length)
   const addClusters = useAppStore((s) => s.addClusters)
   const removeClusters = useAppStore((s) => s.removeClusters)
 
@@ -47,11 +46,13 @@ export function AutoDetectClusters() {
       const coveredIds = new Set(keptClusters.flatMap((c) => listingsInCluster(aboveThreshold, c).map((l) => l.id)))
       const candidateListings = aboveThreshold.filter((l) => !coveredIds.has(l.id))
 
-      const baseCount = clusterCount - idsToRemove.length
+      const remainingNames = new Set(
+        currentClusters.filter((c) => !idsToRemove.includes(c.id)).map((c) => c.name),
+      )
       const detected = detectClusters(
         candidateListings,
         { maxDistanceMiles, minListings, bufferMiles, simplifyToleranceMiles },
-        baseCount,
+        remainingNames,
       )
       addClusters(detected)
       lastBatchIds.current = detected.map((c) => c.id)
