@@ -1,4 +1,5 @@
 import bbox from '@turf/bbox'
+import pointOnFeature from '@turf/point-on-feature'
 import type { Feature, FeatureCollection, MultiPolygon, Point, Polygon } from 'geojson'
 import {
   type ExpressionSpecification,
@@ -14,6 +15,7 @@ import './setupMapWorker'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { listStateProjectSummaries, type StateProjectSummary } from '@/features/persistence/supabaseStateProjects'
 import { datasetBounds } from '@/lib/geo'
+import { abbreviateStateName } from '@/lib/stateAbbreviations'
 import {
   colorForStateSummary,
   EXPLORED_COLOR,
@@ -32,6 +34,8 @@ export const LISTINGS_LAYER_ID = 'listings-points'
 const STATES_SOURCE_ID = 'us-states'
 const STATES_FILL_LAYER_ID = 'us-states-fill'
 const STATES_LINE_LAYER_ID = 'us-states-line'
+const STATES_LABELS_SOURCE_ID = 'us-states-labels'
+const STATES_LABEL_LAYER_ID = 'us-states-label'
 
 // Where the map starts — the landing (state-choosing) view, since a fresh load always begins
 // there. Selecting a state or returning to it later re-fits the camera on its own; this is only
@@ -119,6 +123,55 @@ function withFillColors(
   }
 }
 
+type StateLabelProperties = { name: string; abbr: string }
+
+/** One point per state/territory feature, picked with pointOnFeature so it always lands inside the (possibly concave) polygon, each carrying the abbreviation a symbol layer renders as text. */
+function buildStateLabelPoints(
+  data: FeatureCollection<Polygon | MultiPolygon, { name: string }>,
+): FeatureCollection<Point, StateLabelProperties> {
+  return {
+    type: 'FeatureCollection',
+    features: data.features.map((feature) => {
+      const labelPoint = pointOnFeature(feature)
+      return {
+        type: 'Feature',
+        geometry: labelPoint.geometry,
+        properties: { name: feature.properties.name, abbr: abbreviateStateName(feature.properties.name) },
+      }
+    }),
+  }
+}
+
+function ensureStateLabelsLayer(map: MapLibreMap, data: FeatureCollection<Point, StateLabelProperties>, isLanding: boolean) {
+  if (!map.getSource(STATES_LABELS_SOURCE_ID)) {
+    map.addSource(STATES_LABELS_SOURCE_ID, { type: 'geojson', data })
+  }
+  if (!map.getLayer(STATES_LABEL_LAYER_ID)) {
+    map.addLayer({
+      id: STATES_LABEL_LAYER_ID,
+      type: 'symbol',
+      source: STATES_LABELS_SOURCE_ID,
+      layout: {
+        'text-field': ['get', 'abbr'],
+        // Named fonts come from whatever glyph set the active basemap style serves (Positron's
+        // is OpenMapTiles-based) — listed in order of preference, MapLibre uses the first one
+        // that's actually available rather than failing if the first choice isn't.
+        'text-font': ['Noto Sans Bold', 'Open Sans Bold', 'Arial Unicode MS Bold'],
+        'text-size': 11,
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      paint: {
+        'text-color': '#124c3c',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 1.2,
+        'text-opacity': isLanding ? 1 : 0,
+        'text-opacity-transition': LAYER_FADE,
+      },
+    })
+  }
+}
+
 function ensureStatesLayer(map: MapLibreMap, data: StatesFeatureCollection, isLanding: boolean) {
   if (!map.getSource(STATES_SOURCE_ID)) {
     map.addSource(STATES_SOURCE_ID, { type: 'geojson', data, promoteId: 'name' })
@@ -157,6 +210,9 @@ function applyModeOpacity(map: MapLibreMap, isLanding: boolean) {
   }
   if (map.getLayer(STATES_LINE_LAYER_ID)) {
     map.setPaintProperty(STATES_LINE_LAYER_ID, 'line-opacity', isLanding ? 1 : 0)
+  }
+  if (map.getLayer(STATES_LABEL_LAYER_ID)) {
+    map.setPaintProperty(STATES_LABEL_LAYER_ID, 'text-opacity', isLanding ? 1 : 0)
   }
   if (map.getLayer(LISTINGS_LAYER_ID)) {
     map.setPaintProperty(LISTINGS_LAYER_ID, 'circle-opacity', (isLanding ? 0 : 1) * 0.85)
@@ -203,6 +259,7 @@ export function MapView({ children, onMapReady }: MapViewProps) {
   const [hoveredState, setHoveredState] = useState<{ name: string; statusLabel: string } | null>(null)
   const hoveredIdRef = useRef<string | null>(null)
   const statesDataRef = useRef<StatesFeatureCollection | null>(null)
+  const stateLabelsDataRef = useRef<FeatureCollection<Point, StateLabelProperties> | null>(null)
   const summariesRef = useRef<Map<string, StateProjectSummary>>(new Map())
 
   // Always holds the latest computed GeoJSON so the style-switch handler (set up once, at
@@ -241,7 +298,9 @@ export function MapView({ children, onMapReady }: MapViewProps) {
           summariesRef.current = summaries
           const withColors = withFillColors(data, summaries)
           statesDataRef.current = withColors
+          stateLabelsDataRef.current = buildStateLabelPoints(data)
           ensureStatesLayer(map, withColors, !selectedStateRef.current)
+          ensureStateLabelsLayer(map, stateLabelsDataRef.current, !selectedStateRef.current)
         })
         .catch(() => {
           // Static asset failed to load — the choropleth just stays blank; nothing else depends
@@ -364,6 +423,7 @@ export function MapView({ children, onMapReady }: MapViewProps) {
     map.on('style.load', () => {
       ensureListingsLayer(map, latestListingsDataRef.current, !selectedStateRef.current)
       if (statesDataRef.current) ensureStatesLayer(map, statesDataRef.current, !selectedStateRef.current)
+      if (stateLabelsDataRef.current) ensureStateLabelsLayer(map, stateLabelsDataRef.current, !selectedStateRef.current)
     })
 
     mapRef.current = map
@@ -393,6 +453,7 @@ export function MapView({ children, onMapReady }: MapViewProps) {
     map.once('style.load', () => {
       ensureListingsLayer(map, latestListingsDataRef.current, !selectedStateRef.current)
       if (statesDataRef.current) ensureStatesLayer(map, statesDataRef.current, !selectedStateRef.current)
+      if (stateLabelsDataRef.current) ensureStateLabelsLayer(map, stateLabelsDataRef.current, !selectedStateRef.current)
     })
     map.setStyle(getMapStyle(effectiveStyleId).style)
   }, [effectiveStyleId])
