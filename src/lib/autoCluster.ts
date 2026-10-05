@@ -6,7 +6,7 @@ import { featureCollection, point, polygon } from '@turf/helpers'
 import { simplify } from '@turf/simplify'
 import type { Feature, Polygon, Position } from 'geojson'
 import { v4 as uuidv4 } from 'uuid'
-import { CLUSTER_CONFIDENCE_COLORS, DEFAULT_CLUSTER_CONFIDENCE } from '@/lib/clusterConfidence'
+import { colorForCluster, DEFAULT_CLUSTER_CONFIDENCE } from '@/lib/clusterConfidence'
 import { nameClusterByCities } from '@/lib/clusterNaming'
 import type { Cluster } from '@/types/cluster'
 import type { Listing } from '@/types/listing'
@@ -116,7 +116,8 @@ export function detectClusters(listings: Listing[], options: AutoClusterOptions,
       id: uuidv4(),
       name,
       confidence: DEFAULT_CLUSTER_CONFIDENCE,
-      color: CLUSTER_CONFIDENCE_COLORS[DEFAULT_CLUSTER_CONFIDENCE],
+      explored: false,
+      color: colorForCluster(DEFAULT_CLUSTER_CONFIDENCE, false),
       ring,
       createdAt: Date.now(),
       notes: '',

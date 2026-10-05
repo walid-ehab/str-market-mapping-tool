@@ -2,7 +2,7 @@ import type { Position } from 'geojson'
 import { create } from 'zustand'
 import { defaultColorModeId } from '@/features/color-modes/registry'
 import { defaultFilterValues } from '@/features/filters/registry'
-import { CLUSTER_CONFIDENCE_COLORS, DEFAULT_CLUSTER_CONFIDENCE, type ClusterConfidence } from '@/lib/clusterConfidence'
+import { colorForCluster, DEFAULT_CLUSTER_CONFIDENCE, type ClusterConfidence } from '@/lib/clusterConfidence'
 import { DEFAULT_PROFESSIONAL_HOST_TYPES } from '@/lib/hostType'
 import type { Cluster } from '@/types/cluster'
 import type { Listing } from '@/types/listing'
@@ -11,13 +11,19 @@ import type { StateProjectRow } from '@/types/supabaseSchema'
 export const DEFAULT_REVENUE_THRESHOLD = 90000
 export const DEFAULT_MAP_STYLE_ID = 'carto-positron'
 
-/** Backfills fields added after a cluster may have already been saved (confidence, notes) so old saves load without breaking. */
+/** Backfills fields added after a cluster may have already been saved (confidence, explored, notes) so old saves load without breaking. */
 function normalizeClusters(clusters: Cluster[]): Cluster[] {
-  return clusters.map((c) => ({
-    ...c,
-    ...(c.confidence ? null : { confidence: DEFAULT_CLUSTER_CONFIDENCE, color: CLUSTER_CONFIDENCE_COLORS[DEFAULT_CLUSTER_CONFIDENCE] }),
-    notes: c.notes ?? '',
-  }))
+  return clusters.map((c) => {
+    const confidence = c.confidence ?? DEFAULT_CLUSTER_CONFIDENCE
+    const explored = c.explored ?? false
+    return {
+      ...c,
+      confidence,
+      explored,
+      color: colorForCluster(confidence, explored),
+      notes: c.notes ?? '',
+    }
+  })
 }
 
 /** A state_projects row's clusters column is jsonb — comes back as a parsed value, not a string, but still worth a shape check before trusting it as Cluster[]. */
@@ -93,6 +99,7 @@ interface AppState {
   updateClusterRing: (id: string, ring: Position[]) => void
   renameCluster: (id: string, name: string) => void
   setClusterConfidence: (id: string, confidence: ClusterConfidence) => void
+  setClusterExplored: (id: string, explored: boolean) => void
   setClusterNotes: (id: string, notes: string) => void
   removeCluster: (id: string) => void
   /** Removes several clusters at once (e.g. replacing a previous auto-detect batch) in a single update. */
@@ -204,15 +211,25 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({
       clusters: state.clusters.map((c) => (c.id === id ? { ...c, name } : c)),
     })),
-  // Marking a cluster Good/Great also flips explored true — but only that, never drawing or
-  // auto-detecting a Maybe cluster (both always default to DEFAULT_CLUSTER_CONFIDENCE, 'maybe',
-  // so this is the only path that can ever set a non-maybe confidence).
+  // Marking a cluster Good/Great also flips the STATE's own explored flag true — but only that,
+  // never drawing or auto-detecting a Maybe cluster (both always default to
+  // DEFAULT_CLUSTER_CONFIDENCE, 'maybe', so this is the only path that can ever set a non-maybe
+  // confidence). Distinct from the CLUSTER's own `explored` flag (see setClusterExplored) — a
+  // per-cluster "I've looked into this one specifically" marker, unrelated to confidence.
   setClusterConfidence: (id, confidence) =>
     set((state) => ({
       clusters: state.clusters.map((c) =>
-        c.id === id ? { ...c, confidence, color: CLUSTER_CONFIDENCE_COLORS[confidence] } : c,
+        c.id === id ? { ...c, confidence, color: colorForCluster(confidence, c.explored) } : c,
       ),
       explored: state.explored || confidence === 'good' || confidence === 'great',
+    })),
+  // Colors the cluster yellow when true (colorForCluster), overriding its usual confidence
+  // color — independent of the state-level `explored` flag above.
+  setClusterExplored: (id, explored) =>
+    set((state) => ({
+      clusters: state.clusters.map((c) =>
+        c.id === id ? { ...c, explored, color: colorForCluster(c.confidence, explored) } : c,
+      ),
     })),
   setClusterNotes: (id, notes) =>
     set((state) => ({

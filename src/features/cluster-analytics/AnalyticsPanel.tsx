@@ -13,6 +13,7 @@ export function AnalyticsPanel() {
   const allListings = useClusterAllListings(cluster)
   const revenueThreshold = useAppStore((s) => s.revenueThreshold)
   const setClusterConfidence = useAppStore((s) => s.setClusterConfidence)
+  const setClusterExplored = useAppStore((s) => s.setClusterExplored)
 
   if (!cluster) {
     return <div className="analytics-panel analytics-panel--empty">Draw or select a cluster to see its breakdown.</div>
@@ -28,6 +29,15 @@ export function AnalyticsPanel() {
       </div>
 
       <ConfidencePicker value={cluster.confidence} onChange={(confidence) => setClusterConfidence(cluster.id, confidence)} />
+
+      <label className="cluster-explored-toggle">
+        <input
+          type="checkbox"
+          checked={cluster.explored}
+          onChange={(e) => setClusterExplored(cluster.id, e.target.checked)}
+        />
+        Mark this cluster as explored
+      </label>
 
       <ClusterStatTiles stats={stats} revenueThreshold={revenueThreshold} />
 
