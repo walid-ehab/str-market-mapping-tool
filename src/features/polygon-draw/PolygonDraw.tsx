@@ -5,7 +5,7 @@ import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl'
 import { useEffect, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { useMapInstance } from '@/features/map/MapContext'
-import { CLUSTER_CONFIDENCE_COLORS, DEFAULT_CLUSTER_CONFIDENCE } from '@/lib/clusterConfidence'
+import { CLUSTER_CONFIDENCE_COLORS, CLUSTER_EXPLORED_COLOR, colorForCluster, DEFAULT_CLUSTER_CONFIDENCE } from '@/lib/clusterConfidence'
 import { nameClusterByCities } from '@/lib/clusterNaming'
 import { datasetBounds, listingsInsideRing } from '@/lib/geo'
 import { useAppStore } from '@/store/useAppStore'
@@ -61,16 +61,22 @@ const ZOOM_OUT_MARGIN = 3
  * setStyle() recreates these layers from scratch each time — see the style.load handler below.
  */
 function applyConfidenceStyling(map: MapLibreMap) {
+  // Explored always wins over confidence — mirrors colorForCluster's own precedence.
   const colorExpression: ExpressionSpecification = [
-    'match',
-    ['get', 'user_confidence'],
-    'great',
-    CLUSTER_CONFIDENCE_COLORS.great,
-    'good',
-    CLUSTER_CONFIDENCE_COLORS.good,
-    'maybe',
-    CLUSTER_CONFIDENCE_COLORS.maybe,
-    DRAW_DEFAULT_COLOR,
+    'case',
+    ['boolean', ['get', 'user_explored'], false],
+    CLUSTER_EXPLORED_COLOR,
+    [
+      'match',
+      ['get', 'user_confidence'],
+      'great',
+      CLUSTER_CONFIDENCE_COLORS.great,
+      'good',
+      CLUSTER_CONFIDENCE_COLORS.good,
+      'maybe',
+      CLUSTER_CONFIDENCE_COLORS.maybe,
+      DRAW_DEFAULT_COLOR,
+    ],
   ]
   const lineWidthExpression: ExpressionSpecification = ['case', ['==', ['get', 'active'], 'true'], 3, 2]
 
@@ -133,7 +139,7 @@ function clusterToFeature(cluster: Cluster): Feature<Polygon> {
   return {
     type: 'Feature',
     id: cluster.id,
-    properties: { name: cluster.name, confidence: cluster.confidence },
+    properties: { name: cluster.name, confidence: cluster.confidence, explored: cluster.explored },
     geometry: { type: 'Polygon', coordinates: [cluster.ring] },
   }
 }
@@ -206,7 +212,8 @@ export function PolygonDraw() {
         id,
         name: nameClusterByCities(listingsWithin, usedNames, state.clusters.length + 1),
         confidence: DEFAULT_CLUSTER_CONFIDENCE,
-        color: CLUSTER_CONFIDENCE_COLORS[DEFAULT_CLUSTER_CONFIDENCE],
+        explored: false,
+        color: colorForCluster(DEFAULT_CLUSTER_CONFIDENCE, false),
         ring,
         createdAt: Date.now(),
         notes: '',

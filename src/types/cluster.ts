@@ -5,9 +5,11 @@ import type { ClusterConfidence } from '@/lib/clusterConfidence'
 export interface Cluster {
   id: string
   name: string
-  /** Derived from confidence — see CLUSTER_CONFIDENCE_COLORS. */
+  /** Derived from confidence and explored — see colorForCluster. */
   color: string
   confidence: ClusterConfidence
+  /** Manually toggled "I've looked into this one" flag, independent of confidence — colors the cluster yellow when true (see colorForCluster). Optional, defaults to false for clusters saved before this field existed. */
+  explored: boolean
   /** Closed linear ring, [lng, lat] pairs, first === last. */
   ring: Position[]
   createdAt: number

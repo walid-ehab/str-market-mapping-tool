@@ -1,6 +1,6 @@
 import { ClusterStatTiles } from '@/features/cluster-analytics/ClusterStatTiles'
 import { chartDefinitions } from '@/features/cluster-analytics/registry'
-import { CLUSTER_CONFIDENCE_COLORS, CLUSTER_CONFIDENCE_LABELS } from '@/lib/clusterConfidence'
+import { CLUSTER_CONFIDENCE_LABELS, colorForCluster } from '@/lib/clusterConfidence'
 import { CopyButton } from './CopyButton'
 import { formatPolygonGeoJson } from './polygonJson'
 import type { ReportCluster } from './useReportClusters'
@@ -45,7 +45,7 @@ export function ReportView({ reportClusters, snapshots, revenueThreshold, datase
               <h2>{cluster.name}</h2>
               <span
                 className="report-cluster__confidence"
-                style={{ backgroundColor: CLUSTER_CONFIDENCE_COLORS[cluster.confidence] }}
+                style={{ backgroundColor: colorForCluster(cluster.confidence, cluster.explored) }}
               >
                 {CLUSTER_CONFIDENCE_LABELS[cluster.confidence]}
               </span>

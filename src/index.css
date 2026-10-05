@@ -407,6 +407,15 @@ button {
   color: white;
 }
 
+.cluster-explored-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
 .analytics-panel__swatch {
   width: 10px;
   height: 10px;
