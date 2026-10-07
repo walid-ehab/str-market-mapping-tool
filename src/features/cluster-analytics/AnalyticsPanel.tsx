@@ -39,9 +39,9 @@ export function AnalyticsPanel() {
         Mark this cluster as explored
       </label>
 
-      <ClusterStatTiles stats={stats} revenueThreshold={revenueThreshold} />
-
       <ClusterNotes cluster={cluster} />
+
+      <ClusterStatTiles stats={stats} revenueThreshold={revenueThreshold} />
 
       <ClusterExportButtons cluster={cluster} />
 
