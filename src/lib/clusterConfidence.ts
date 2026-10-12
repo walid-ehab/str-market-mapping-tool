@@ -1,21 +1,19 @@
 /** How confident the user is that a drawn cluster is a good STR market candidate. */
-export type ClusterConfidence = 'great' | 'good' | 'maybe' | 'restrictive' | 'low-inventory'
+export type ClusterConfidence = 'potential' | 'maybe' | 'restrictive' | 'low-inventory'
 
 export const DEFAULT_CLUSTER_CONFIDENCE: ClusterConfidence = 'maybe'
 
-export const CLUSTER_CONFIDENCE_ORDER: ClusterConfidence[] = ['great', 'good', 'maybe', 'restrictive', 'low-inventory']
+export const CLUSTER_CONFIDENCE_ORDER: ClusterConfidence[] = ['potential', 'maybe', 'restrictive', 'low-inventory']
 
 export const CLUSTER_CONFIDENCE_LABELS: Record<ClusterConfidence, string> = {
-  great: 'Great',
-  good: 'Good',
+  potential: 'Potential',
   maybe: 'Maybe',
   restrictive: 'Restrictive',
   'low-inventory': 'Low Inventory',
 }
 
 export const CLUSTER_CONFIDENCE_COLORS: Record<ClusterConfidence, string> = {
-  great: '#16A34A',
-  good: '#2563EB',
+  potential: '#16A34A',
   maybe: '#94A3B8',
   restrictive: '#DC2626',
   'low-inventory': '#9333EA',

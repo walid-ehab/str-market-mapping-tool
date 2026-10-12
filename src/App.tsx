@@ -31,7 +31,7 @@ function App() {
   const stateProjectSaveError = useAppStore((s) => s.stateProjectSaveError)
   const explored = useAppStore((s) => s.explored)
   const setExplored = useAppStore((s) => s.setExplored)
-  const hasGoodOrGreatCluster = useAppStore((s) => s.clusters.some((c) => c.confidence === 'good' || c.confidence === 'great'))
+  const hasGoodOrGreatCluster = useAppStore((s) => s.clusters.some((c) => c.confidence === 'potential'))
   // Owned here (not inside MapView) so the cluster list in the sidebar — a sibling of
   // MapView, not one of its children — can also reach the map, e.g. to fly to a cluster.
   const [mapInstance, setMapInstance] = useState<MapLibreMap | null>(null)

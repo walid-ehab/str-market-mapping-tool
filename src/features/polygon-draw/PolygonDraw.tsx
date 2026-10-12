@@ -69,10 +69,8 @@ function applyConfidenceStyling(map: MapLibreMap) {
     [
       'match',
       ['get', 'user_confidence'],
-      'great',
-      CLUSTER_CONFIDENCE_COLORS.great,
-      'good',
-      CLUSTER_CONFIDENCE_COLORS.good,
+      'potential',
+      CLUSTER_CONFIDENCE_COLORS.potential,
       'maybe',
       CLUSTER_CONFIDENCE_COLORS.maybe,
       'restrictive',
