@@ -75,6 +75,8 @@ function applyConfidenceStyling(map: MapLibreMap) {
       CLUSTER_CONFIDENCE_COLORS.good,
       'maybe',
       CLUSTER_CONFIDENCE_COLORS.maybe,
+      'restrictive',
+      CLUSTER_CONFIDENCE_COLORS.restrictive,
       DRAW_DEFAULT_COLOR,
     ],
   ]
