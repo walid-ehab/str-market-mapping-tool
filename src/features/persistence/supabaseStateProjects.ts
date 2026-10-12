@@ -20,11 +20,17 @@ export interface StateProjectSummary {
   explored: boolean
 }
 
-/** Counts a cluster as Good/Great without importing the full Cluster type — this only ever reads a jsonb blob of unknown shape. */
+/** Counts a cluster as Potential without importing the full Cluster type — this only ever reads a jsonb
+ *  blob of unknown shape, straight from the DB rather than through the app store's own load-time
+ *  migration, so a state not yet re-opened since 'good'/'great' merged into 'potential' is still counted. */
 function countGoodGreat(clusters: unknown): number {
   if (!Array.isArray(clusters)) return 0
   return clusters.filter(
-    (c) => c && typeof c === 'object' && ('confidence' in c ? c.confidence === 'good' || c.confidence === 'great' : false),
+    (c) =>
+      c &&
+      typeof c === 'object' &&
+      'confidence' in c &&
+      (c.confidence === 'potential' || c.confidence === 'good' || c.confidence === 'great'),
   ).length
 }
 

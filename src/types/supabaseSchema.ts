@@ -74,7 +74,7 @@ export type StateProjectRow = {
   filter_values: Record<string, unknown>
   map_style_id: string
   professional_host_types: string[] | null
-  /** Manually toggleable "explored" flag, also auto-set true by marking a cluster Good/Great. */
+  /** Manually toggleable "explored" flag, also auto-set true by marking a cluster Potential. */
   explored: boolean
   updated_at: string
 }

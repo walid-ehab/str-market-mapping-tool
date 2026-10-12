@@ -11,10 +11,16 @@ import type { StateProjectRow } from '@/types/supabaseSchema'
 export const DEFAULT_REVENUE_THRESHOLD = 90000
 export const DEFAULT_MAP_STYLE_ID = 'carto-positron'
 
+/** 'good' and 'great' were merged into a single 'potential' tier — old saves may still carry
+ *  either literal, so they're remapped on load rather than left to fail the ClusterConfidence type. */
+function migrateConfidence(confidence: string): ClusterConfidence {
+  return confidence === 'good' || confidence === 'great' ? 'potential' : (confidence as ClusterConfidence)
+}
+
 /** Backfills fields added after a cluster may have already been saved (confidence, explored, notes) so old saves load without breaking. */
 function normalizeClusters(clusters: Cluster[]): Cluster[] {
   return clusters.map((c) => {
-    const confidence = c.confidence ?? DEFAULT_CLUSTER_CONFIDENCE
+    const confidence = migrateConfidence(c.confidence ?? DEFAULT_CLUSTER_CONFIDENCE)
     const explored = c.explored ?? false
     return {
       ...c,
@@ -32,7 +38,7 @@ function parseClusters(value: unknown): Cluster[] {
 }
 
 function hasGoodOrGreatCluster(clusters: Cluster[]): boolean {
-  return clusters.some((c) => c.confidence === 'good' || c.confidence === 'great')
+  return clusters.some((c) => c.confidence === 'potential')
 }
 
 interface AppState {
@@ -211,7 +217,7 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({
       clusters: state.clusters.map((c) => (c.id === id ? { ...c, name } : c)),
     })),
-  // Marking a cluster Good/Great also flips the STATE's own explored flag true — but only that,
+  // Marking a cluster Potential also flips the STATE's own explored flag true — but only that,
   // never drawing or auto-detecting a Maybe cluster (both always default to
   // DEFAULT_CLUSTER_CONFIDENCE, 'maybe', so this is the only path that can ever set a non-maybe
   // confidence). Distinct from the CLUSTER's own `explored` flag (see setClusterExplored) — a
@@ -221,7 +227,7 @@ export const useAppStore = create<AppState>((set) => ({
       clusters: state.clusters.map((c) =>
         c.id === id ? { ...c, confidence, color: colorForCluster(confidence, c.explored) } : c,
       ),
-      explored: state.explored || confidence === 'good' || confidence === 'great',
+      explored: state.explored || confidence === 'potential',
     })),
   // Colors the cluster yellow when true (colorForCluster), overriding its usual confidence
   // color — independent of the state-level `explored` flag above.
