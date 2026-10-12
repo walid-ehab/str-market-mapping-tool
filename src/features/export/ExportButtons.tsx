@@ -34,7 +34,12 @@ export function ClusterExportButtons({ cluster }: { cluster: Cluster }) {
         Export Lat/Lng
       </button>
       {bounds && (
-        <a href={buildZillowSearchUrl(bounds)} target="_blank" rel="noopener noreferrer">
+        <a
+          className="export-buttons__zillow"
+          href={buildZillowSearchUrl(bounds)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           Search on Zillow
         </a>
       )}

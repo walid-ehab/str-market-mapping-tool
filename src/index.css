@@ -560,6 +560,19 @@ button {
   font-size: 12px;
 }
 
+/* Zillow's own brand blue, so the link reads as "go to Zillow" rather than another plain export button. */
+.export-buttons a.export-buttons__zillow {
+  background: #0064d2;
+  border-color: #0064d2;
+  color: #fff;
+}
+
+.export-buttons a.export-buttons__zillow:hover {
+  background: #004f9f;
+  border-color: #004f9f;
+  color: #fff;
+}
+
 .sidebar__section-header-actions {
   display: flex;
   align-items: center;
