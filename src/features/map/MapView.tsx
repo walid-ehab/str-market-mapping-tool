@@ -254,7 +254,7 @@ export function MapView({ children, onMapReady }: MapViewProps) {
   const colorMode = useActiveColorMode()
   // The landing choropleth always uses the same clean basemap regardless of what style the
   // user picked for a state's dashboard — that preference only applies once a state is selected.
-  const effectiveStyleId = selectedState ? mapStyleId : 'carto-positron'
+  const effectiveStyleId = selectedState ? mapStyleId : 'carto-voyager'
 
   const [hoveredState, setHoveredState] = useState<{ name: string; statusLabel: string } | null>(null)
   const hoveredIdRef = useRef<string | null>(null)
@@ -272,7 +272,7 @@ export function MapView({ children, onMapReady }: MapViewProps) {
 
     const map = new MapLibreMap({
       container: containerRef.current,
-      style: getMapStyle('carto-positron').style,
+      style: getMapStyle('carto-voyager').style,
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
       // Needed for the report feature's canvas.toDataURL() snapshots — without it the WebGL
