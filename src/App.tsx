@@ -114,7 +114,7 @@ function App() {
                 <ProfessionalHostTypeSettings />
               </CollapsibleSection>
 
-              <CollapsibleSection title="Filters">
+              <CollapsibleSection title="Filters" defaultOpen={false}>
                 <FilterPanel />
               </CollapsibleSection>
 
