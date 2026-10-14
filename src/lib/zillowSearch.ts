@@ -1,5 +1,17 @@
 import type { LngLatBounds } from '@/lib/geo'
 
+export type ZillowBedroomMode = 'exact' | 'at-least'
+
+export interface ZillowSearchFilters {
+  bedroomMode: ZillowBedroomMode
+  /** 0-5, where 5 means the "5+" bucket — Zillow has no "exactly 5+", so bedroomMode is forced to 'at-least' whenever this is 5. */
+  bedroomValue: number
+  /** 0 means "no minimum". */
+  minPrice: number
+  /** 0 means "no maximum". */
+  maxPrice: number
+}
+
 /**
  * The filterState from a real Zillow "for sale" map search URL (for-sale only; excludes
  * co-ops/foreclosures/multi-family/land/manufactured homes/co-op apartments, no HOA fee, 55+
@@ -24,8 +36,18 @@ const ZILLOW_FILTER_STATE = {
   tow: { value: false },
 }
 
-/** Builds a Zillow "for sale" map-search URL scoped to a cluster's bounding box, with the team's usual search filters applied. */
-export function buildZillowSearchUrl(bounds: LngLatBounds): string {
+/** Builds a Zillow "for sale" map-search URL scoped to a cluster's bounding box, with the team's usual search filters applied, plus an optional price/bedroom filter on top. */
+export function buildZillowSearchUrl(bounds: LngLatBounds, filters?: ZillowSearchFilters): string {
+  const filterState: Record<string, unknown> = { ...ZILLOW_FILTER_STATE }
+  if (filters) {
+    // "5+" has no exact equivalent on Zillow, so it's always encoded as "at least" (max omitted).
+    filterState.beds =
+      filters.bedroomMode === 'at-least' || filters.bedroomValue >= 5
+        ? { min: filters.bedroomValue }
+        : { min: filters.bedroomValue, max: filters.bedroomValue }
+    filterState.price = { min: filters.minPrice || null, max: filters.maxPrice || null }
+  }
+
   const searchQueryState = {
     pagination: {},
     isMapVisible: true,
@@ -35,7 +57,7 @@ export function buildZillowSearchUrl(bounds: LngLatBounds): string {
       south: bounds.sw[1],
       north: bounds.ne[1],
     },
-    filterState: ZILLOW_FILTER_STATE,
+    filterState,
     isListVisible: true,
     mapZoom: 16,
     usersSearchTerm: '',

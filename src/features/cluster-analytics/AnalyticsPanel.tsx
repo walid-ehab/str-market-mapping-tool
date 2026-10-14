@@ -2,6 +2,7 @@ import { ClusterNotes } from '@/features/cluster-analytics/ClusterNotes'
 import { ClusterStatTiles } from '@/features/cluster-analytics/ClusterStatTiles'
 import { ConfidencePicker } from '@/features/clusters/ConfidencePicker'
 import { ClusterExportButtons } from '@/features/export/ExportButtons'
+import { ZillowSearchSection } from '@/features/export/ZillowSearchSection'
 import { useActiveCluster, useClusterAllListings, useClusterListings } from '@/store/selectors'
 import { useAppStore } from '@/store/useAppStore'
 import { computeClusterStats } from './clusterStats'
@@ -44,6 +45,8 @@ export function AnalyticsPanel() {
       <ClusterStatTiles stats={stats} revenueThreshold={revenueThreshold} />
 
       <ClusterExportButtons cluster={cluster} />
+
+      <ZillowSearchSection cluster={cluster} allListings={allListings} />
 
       {listings.length === 0 ? (
         <div className="analytics-panel__empty">No listings fall inside this polygon with the current filters.</div>

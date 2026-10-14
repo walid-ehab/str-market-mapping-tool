@@ -4,6 +4,7 @@ import { defaultColorModeId } from '@/features/color-modes/registry'
 import { defaultFilterValues } from '@/features/filters/registry'
 import { colorForCluster, DEFAULT_CLUSTER_CONFIDENCE, type ClusterConfidence } from '@/lib/clusterConfidence'
 import { DEFAULT_PROFESSIONAL_HOST_TYPES } from '@/lib/hostType'
+import type { ZillowSearchFilters } from '@/lib/zillowSearch'
 import type { Cluster } from '@/types/cluster'
 import type { Listing } from '@/types/listing'
 import type { StateProjectRow } from '@/types/supabaseSchema'
@@ -107,6 +108,7 @@ interface AppState {
   setClusterConfidence: (id: string, confidence: ClusterConfidence) => void
   setClusterExplored: (id: string, explored: boolean) => void
   setClusterNotes: (id: string, notes: string) => void
+  setClusterZillowFilters: (id: string, filters: ZillowSearchFilters) => void
   removeCluster: (id: string) => void
   /** Removes several clusters at once (e.g. replacing a previous auto-detect batch) in a single update. */
   removeClusters: (ids: string[]) => void
@@ -240,6 +242,10 @@ export const useAppStore = create<AppState>((set) => ({
   setClusterNotes: (id, notes) =>
     set((state) => ({
       clusters: state.clusters.map((c) => (c.id === id ? { ...c, notes } : c)),
+    })),
+  setClusterZillowFilters: (id, zillowFilters) =>
+    set((state) => ({
+      clusters: state.clusters.map((c) => (c.id === id ? { ...c, zillowFilters } : c)),
     })),
   removeCluster: (id) =>
     set((state) => ({
