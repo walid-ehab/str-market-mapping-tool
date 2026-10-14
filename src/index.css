@@ -560,17 +560,21 @@ button {
   font-size: 12px;
 }
 
-/* Zillow's own brand blue, so the link reads as "go to Zillow" rather than another plain export button. */
-.export-buttons a.export-buttons__zillow {
+/* Zillow's own brand blue, so the link reads as "go to Zillow" rather than a plain control. */
+.zillow-search__link {
+  display: block;
+  text-align: center;
+  border-radius: var(--radius);
+  padding: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
   background: #0064d2;
-  border-color: #0064d2;
   color: #fff;
 }
 
-.export-buttons a.export-buttons__zillow:hover {
+.zillow-search__link:hover {
   background: #004f9f;
-  border-color: #004f9f;
-  color: #fff;
 }
 
 .sidebar__section-header-actions {
