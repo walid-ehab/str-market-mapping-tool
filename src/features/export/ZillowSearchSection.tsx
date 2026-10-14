@@ -63,6 +63,14 @@ export function ZillowSearchSection({ cluster, allListings }: { cluster: Cluster
 
   return (
     <CollapsibleSection title="Search on Zillow">
+      <button
+        type="button"
+        className="filter-control__reset"
+        onClick={() => setClusterZillowFilters(cluster.id, computeDefaultFilters(aboveThreshold))}
+      >
+        Reset to defaults
+      </button>
+
       <div className="filter-control filter-control--chips">
         {BEDROOM_OPTIONS.map(({ value, label }) => (
           <button
