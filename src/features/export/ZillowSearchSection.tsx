@@ -20,16 +20,15 @@ function matchesBedroom(listing: EnrichedListing, mode: ZillowBedroomMode, value
 }
 
 /**
- * At-least-the-median bedroom count among the cluster's above-threshold listings, and a max
- * price derived from a rough revenue-multiple rule of thumb: a property priced at a 15% gross
- * yield on its Q75 revenue potential, i.e. price = revenue / 0.15 = revenue * (100/15).
+ * Max price derived from a rough revenue-multiple rule of thumb: a property priced at a 15%
+ * gross yield on its Q75 revenue potential (among above-threshold listings matching the given
+ * bedroom selection), i.e. price = revenue / 0.15 = revenue * (100/15). Min price is always 0.
  */
-function computeDefaultFilters(aboveThreshold: EnrichedListing[]): ZillowSearchFilters {
-  const bedroomMode: ZillowBedroomMode = 'at-least'
-  const bedroomsSorted = aboveThreshold.map((l) => l.bedrooms).sort((a, b) => a - b)
-  const medianBedrooms = bedroomsSorted.length > 0 ? quantile(bedroomsSorted, 0.5) : 0
-  const bedroomValue = Math.min(5, Math.max(0, Math.round(medianBedrooms)))
-
+function computeDefaultPrice(
+  aboveThreshold: EnrichedListing[],
+  bedroomMode: ZillowBedroomMode,
+  bedroomValue: number,
+): Pick<ZillowSearchFilters, 'minPrice' | 'maxPrice'> {
   const matching = aboveThreshold.filter((l) => matchesBedroom(l, bedroomMode, bedroomValue))
   const revenues = matching
     .map((l) => l.revenuePotentialLtm)
@@ -38,7 +37,17 @@ function computeDefaultFilters(aboveThreshold: EnrichedListing[]): ZillowSearchF
   const q75 = revenues.length > 0 ? quantile(revenues, 0.75) : 0
   const maxPrice = Math.round(((100 / 15) * q75) / 1000) * 1000
 
-  return { bedroomMode, bedroomValue, minPrice: 0, maxPrice }
+  return { minPrice: 0, maxPrice }
+}
+
+/** At-least-the-median bedroom count among the cluster's above-threshold listings, plus that selection's own default price (see computeDefaultPrice). */
+function computeDefaultFilters(aboveThreshold: EnrichedListing[]): ZillowSearchFilters {
+  const bedroomMode: ZillowBedroomMode = 'at-least'
+  const bedroomsSorted = aboveThreshold.map((l) => l.bedrooms).sort((a, b) => a - b)
+  const medianBedrooms = bedroomsSorted.length > 0 ? quantile(bedroomsSorted, 0.5) : 0
+  const bedroomValue = Math.min(5, Math.max(0, Math.round(medianBedrooms)))
+
+  return { bedroomMode, bedroomValue, ...computeDefaultPrice(aboveThreshold, bedroomMode, bedroomValue) }
 }
 
 export function ZillowSearchSection({ cluster, allListings }: { cluster: Cluster; allListings: EnrichedListing[] }) {
@@ -59,6 +68,12 @@ export function ZillowSearchSection({ cluster, allListings }: { cluster: Cluster
 
   const filters = cluster.zillowFilters ?? computeDefaultFilters(aboveThreshold)
   const update = (patch: Partial<ZillowSearchFilters>) => setClusterZillowFilters(cluster.id, { ...filters, ...patch })
+  // Bedroom selection drives what "default price" even means, so changing it re-derives
+  // min/max price for the new selection rather than leaving a stale price behind.
+  const updateBedroom = (bedroomValue: number, bedroomMode: ZillowBedroomMode) => {
+    if (bedroomValue === filters.bedroomValue && bedroomMode === filters.bedroomMode) return
+    update({ bedroomValue, bedroomMode, ...computeDefaultPrice(aboveThreshold, bedroomMode, bedroomValue) })
+  }
   const sliderMax = Math.max(2_000_000, filters.maxPrice * 1.5, filters.minPrice * 1.5)
 
   return (
@@ -77,7 +92,7 @@ export function ZillowSearchSection({ cluster, allListings }: { cluster: Cluster
             key={value}
             type="button"
             className={`chip-toggle${filters.bedroomValue === value ? ' chip-toggle--active' : ''}`}
-            onClick={() => update({ bedroomValue: value, bedroomMode: value >= 5 ? 'at-least' : filters.bedroomMode })}
+            onClick={() => updateBedroom(value, value >= 5 ? 'at-least' : filters.bedroomMode)}
           >
             {label}
           </button>
@@ -88,7 +103,7 @@ export function ZillowSearchSection({ cluster, allListings }: { cluster: Cluster
         <button
           type="button"
           className={`chip-toggle${filters.bedroomMode === 'at-least' ? ' chip-toggle--active' : ''}`}
-          onClick={() => update({ bedroomMode: 'at-least' })}
+          onClick={() => updateBedroom(filters.bedroomValue, 'at-least')}
         >
           At least
         </button>
@@ -97,7 +112,7 @@ export function ZillowSearchSection({ cluster, allListings }: { cluster: Cluster
           disabled={filters.bedroomValue >= 5}
           title={filters.bedroomValue >= 5 ? '"5+" has no exact equivalent on Zillow' : undefined}
           className={`chip-toggle${filters.bedroomMode === 'exact' ? ' chip-toggle--active' : ''}`}
-          onClick={() => update({ bedroomMode: 'exact' })}
+          onClick={() => updateBedroom(filters.bedroomValue, 'exact')}
         >
           Exact
         </button>
