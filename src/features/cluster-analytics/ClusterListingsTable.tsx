@@ -1,7 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatCurrency, formatPercent } from '@/lib/format'
 import { useActiveCluster, useClusterListings } from '@/store/selectors'
 import { useAppStore } from '@/store/useAppStore'
+
+/** Name of the CSS custom property (see index.css) that the map's bottom-left scale control reads its margin-bottom from — otherwise it's fixed to the map container's literal bottom-left corner, which this overlay's rendered box covers. Published in full (not just this overlay's height) so the plain CSS rule can stay a single `var()` read with no arithmetic of its own. */
+const SCALE_MARGIN_CSS_VAR = '--map-scale-margin-bottom'
+/** The library's own default .maplibregl-ctrl-bottom-left margin-bottom — restored whenever this overlay isn't shown at all (no cluster/listings selected). */
+const DEFAULT_SCALE_MARGIN = '10px'
+/** Matches .map-overlay--bottom's own `bottom` offset in index.css. */
+const OVERLAY_BOTTOM_OFFSET = 12
+/** Visual gap left between the scale control and the top of this overlay. */
+const SCALE_GAP = 8
 
 /** Collapsible table of every listing currently shown for the active cluster, sorted by revenue potential (highest first). Hidden by default — toggled via "Show Listings". Rendered as a map-pane overlay (see App.tsx), so it pulls its own cluster/listings rather than taking them as props. Hovering a row highlights that listing's marker on the map (see MapView's hoveredListingId handling). */
 export function ClusterListingsTable() {
@@ -9,15 +18,35 @@ export function ClusterListingsTable() {
   const cluster = useActiveCluster()
   const listings = useClusterListings(cluster)
   const setHoveredListingId = useAppStore((s) => s.setHoveredListingId)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const isVisible = !!cluster && listings.length > 0
 
-  if (!cluster || listings.length === 0) return null
+  useEffect(() => {
+    if (!isVisible) {
+      document.documentElement.style.setProperty(SCALE_MARGIN_CSS_VAR, DEFAULT_SCALE_MARGIN)
+      return
+    }
+    const el = containerRef.current
+    if (!el) return
+    const updateMargin = () => {
+      document.documentElement.style.setProperty(
+        SCALE_MARGIN_CSS_VAR,
+        `${OVERLAY_BOTTOM_OFFSET + el.offsetHeight + SCALE_GAP}px`,
+      )
+    }
+    const observer = new ResizeObserver(updateMargin)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [isVisible])
+
+  if (!isVisible) return null
 
   const sorted = [...listings].sort(
     (a, b) => (b.revenuePotentialLtm ?? -Infinity) - (a.revenuePotentialLtm ?? -Infinity),
   )
 
   return (
-    <div className="map-overlay map-overlay--bottom cluster-listings">
+    <div ref={containerRef} className="map-overlay map-overlay--bottom cluster-listings">
       <button type="button" className="cluster-listings__toggle" onClick={() => setIsOpen((open) => !open)}>
         {isOpen ? 'Hide' : 'Show'} Listings ({listings.length})
       </button>
