@@ -860,6 +860,18 @@ button {
   right: 12px;
 }
 
+/* MapLibre's own scale control sits at the map container's literal bottom-left corner, which
+   .map-overlay--bottom's rendered box covers — without this it ends up hidden behind the
+   "Show/Hide Listings" button. --map-scale-margin-bottom is kept up to date by
+   ClusterListingsTable (back to the library's own 10px default while no cluster/listings are
+   shown at all), so this pushes the scale control up to sit just above that overlay instead,
+   open or closed. !important overrides maplibre-gl.css's own margin shorthand, which carries
+   the same selector specificity. */
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl-scale {
+  margin-bottom: var(--map-scale-margin-bottom, 10px) !important;
+  transition: margin-bottom 0.15s ease;
+}
+
 .style-switcher {
   display: flex;
   flex-direction: column;
