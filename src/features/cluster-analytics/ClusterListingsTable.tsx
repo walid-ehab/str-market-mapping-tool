@@ -28,6 +28,7 @@ export function ClusterListingsTable() {
             <thead>
               <tr>
                 <th>Title</th>
+                <th>Link</th>
                 <th>Beds</th>
                 <th>Baths</th>
                 <th>Revenue Potential</th>
@@ -37,13 +38,19 @@ export function ClusterListingsTable() {
                 <th>City</th>
                 <th>Superhost</th>
                 <th>Pool</th>
-                <th>Link</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((listing) => (
                 <tr key={listing.id} onMouseEnter={() => setHoveredListingId(listing.id)}>
                   <td>{listing.title}</td>
+                  <td>
+                    {listing.listingUrl && (
+                      <a href={listing.listingUrl} target="_blank" rel="noopener noreferrer">
+                        Open ↗
+                      </a>
+                    )}
+                  </td>
                   <td>{listing.bedrooms}</td>
                   <td>{listing.bathrooms}</td>
                   <td>{formatCurrency(listing.revenuePotentialLtm)}</td>
@@ -53,13 +60,6 @@ export function ClusterListingsTable() {
                   <td>{listing.cityName}</td>
                   <td>{listing.superhost ? 'Yes' : '—'}</td>
                   <td>{listing.hasPool ? 'Yes' : '—'}</td>
-                  <td>
-                    {listing.listingUrl && (
-                      <a href={listing.listingUrl} target="_blank" rel="noopener noreferrer">
-                        Open ↗
-                      </a>
-                    )}
-                  </td>
                 </tr>
               ))}
             </tbody>
