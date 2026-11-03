@@ -527,6 +527,61 @@ button {
   margin-bottom: 2px;
 }
 
+/* --- Cluster listings table --- */
+
+.cluster-listings__toggle {
+  width: 100%;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cluster-listings__toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.cluster-listings__scroll {
+  margin-top: 8px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.cluster-listings__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.cluster-listings__table th,
+.cluster-listings__table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.cluster-listings__table th {
+  position: sticky;
+  top: 0;
+  background: var(--panel-bg);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.cluster-listings__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.cluster-listings__table tbody tr:hover {
+  background: var(--bg);
+}
+
 /* --- Export --- */
 
 .export-buttons {
