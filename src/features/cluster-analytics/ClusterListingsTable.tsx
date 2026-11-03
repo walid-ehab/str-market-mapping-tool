@@ -30,6 +30,7 @@ export function ClusterListingsTable() {
                 <th>Title</th>
                 <th>Link</th>
                 <th>Beds</th>
+                <th>Sleeps</th>
                 <th>Baths</th>
                 <th>Revenue Potential</th>
                 <th>Avg Daily Rate</th>
@@ -52,6 +53,7 @@ export function ClusterListingsTable() {
                     )}
                   </td>
                   <td>{listing.bedrooms}</td>
+                  <td>{listing.accommodates}</td>
                   <td>{listing.bathrooms}</td>
                   <td>{formatCurrency(listing.revenuePotentialLtm)}</td>
                   <td>{formatCurrency(listing.averageDailyRateLtm)}</td>
