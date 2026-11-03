@@ -556,9 +556,10 @@ button {
 
 .cluster-listings__table {
   width: 100%;
+  min-width: 1150px;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 11px;
-  white-space: nowrap;
 }
 
 .cluster-listings__table th,
@@ -566,6 +567,9 @@ button {
   padding: 6px 8px;
   text-align: left;
   border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cluster-listings__table th {

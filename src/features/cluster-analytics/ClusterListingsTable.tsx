@@ -25,6 +25,20 @@ export function ClusterListingsTable() {
       {isOpen && (
         <div className="cluster-listings__scroll" onMouseLeave={() => setHoveredListingId(null)}>
           <table className="cluster-listings__table">
+            <colgroup>
+              <col style={{ width: 220 }} />
+              <col style={{ width: 70 }} />
+              <col style={{ width: 50 }} />
+              <col style={{ width: 60 }} />
+              <col style={{ width: 50 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 100 }} />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 120 }} />
+              <col style={{ width: 110 }} />
+              <col style={{ width: 80 }} />
+              <col style={{ width: 60 }} />
+            </colgroup>
             <thead>
               <tr>
                 <th>Title</th>
@@ -44,7 +58,7 @@ export function ClusterListingsTable() {
             <tbody>
               {sorted.map((listing) => (
                 <tr key={listing.id} onMouseEnter={() => setHoveredListingId(listing.id)}>
-                  <td>{listing.title}</td>
+                  <td title={listing.title}>{listing.title}</td>
                   <td>
                     {listing.listingUrl && (
                       <a href={listing.listingUrl} target="_blank" rel="noopener noreferrer">
