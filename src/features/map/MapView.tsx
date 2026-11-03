@@ -76,6 +76,22 @@ const statesFillOpacityExpression = (isLanding: boolean): ExpressionSpecificatio
   ['case', ['boolean', ['feature-state', 'hover'], false], 0.95, 0.75],
 ]
 
+const LISTINGS_RADIUS_EXPRESSION: ExpressionSpecification = [
+  'interpolate',
+  ['linear'],
+  ['get', 'revenue'],
+  0, 4,
+  25000, 5,
+  90000, 7,
+  250000, 10,
+  600000, 14,
+]
+const HIGHLIGHT_RADIUS = 16
+const HIGHLIGHT_STROKE_WIDTH = 3
+const HIGHLIGHT_STROKE_COLOR = '#111827'
+const DEFAULT_STROKE_WIDTH = 0.6
+const DEFAULT_STROKE_COLOR = '#ffffff'
+
 function ensureListingsLayer(map: MapLibreMap, data: FeatureCollection<Point, ListingFeatureProperties>, isLanding: boolean) {
   if (!map.getSource(LISTINGS_SOURCE_ID)) {
     map.addSource(LISTINGS_SOURCE_ID, { type: 'geojson', data })
@@ -90,23 +106,35 @@ function ensureListingsLayer(map: MapLibreMap, data: FeatureCollection<Point, Li
         'circle-color': ['get', 'color'],
         'circle-opacity': opacity * 0.85,
         'circle-opacity-transition': LAYER_FADE,
-        'circle-stroke-width': 0.6,
-        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': DEFAULT_STROKE_WIDTH,
+        'circle-stroke-color': DEFAULT_STROKE_COLOR,
         'circle-stroke-opacity': opacity,
         'circle-stroke-opacity-transition': LAYER_FADE,
-        'circle-radius': [
-          'interpolate',
-          ['linear'],
-          ['get', 'revenue'],
-          0, 4,
-          25000, 5,
-          90000, 7,
-          250000, 10,
-          600000, 14,
-        ],
+        'circle-radius': LISTINGS_RADIUS_EXPRESSION,
       },
     })
   }
+}
+
+/** Re-applies the hovered-listing highlight (bigger radius, darker/thicker stroke) to the listings layer — called both on every hoveredListingId change and after any (re)creation of the layer itself, e.g. a basemap style switch, since that tears down and rebuilds it from its plain defaults. */
+function applyListingsHighlight(map: MapLibreMap, hoveredListingId: string | null) {
+  if (!map.getLayer(LISTINGS_LAYER_ID)) return
+  const isHovered: ExpressionSpecification = ['==', ['get', 'id'], hoveredListingId ?? '']
+  map.setPaintProperty(
+    LISTINGS_LAYER_ID,
+    'circle-radius',
+    hoveredListingId ? ['case', isHovered, HIGHLIGHT_RADIUS, LISTINGS_RADIUS_EXPRESSION] : LISTINGS_RADIUS_EXPRESSION,
+  )
+  map.setPaintProperty(
+    LISTINGS_LAYER_ID,
+    'circle-stroke-width',
+    hoveredListingId ? ['case', isHovered, HIGHLIGHT_STROKE_WIDTH, DEFAULT_STROKE_WIDTH] : DEFAULT_STROKE_WIDTH,
+  )
+  map.setPaintProperty(
+    LISTINGS_LAYER_ID,
+    'circle-stroke-color',
+    hoveredListingId ? ['case', isHovered, HIGHLIGHT_STROKE_COLOR, DEFAULT_STROKE_COLOR] : DEFAULT_STROKE_COLOR,
+  )
 }
 
 /** Merges each feature's saved-progress summary in as a plain property, so fill-color can just read it back — no MapLibre expression needs to know about explored/counts. */
@@ -249,6 +277,11 @@ export function MapView({ children, onMapReady }: MapViewProps) {
   const selectState = useAppStore((s) => s.selectState)
 
   const mapStyleId = useAppStore((s) => s.mapStyleId)
+  const hoveredListingId = useAppStore((s) => s.hoveredListingId)
+  // Read inside map event handlers registered once at mount (style.load/load) — a ref avoids
+  // re-binding them on every hover change; see applyListingsHighlight.
+  const hoveredListingIdRef = useRef(hoveredListingId)
+  hoveredListingIdRef.current = hoveredListingId
   const rawListings = useAppStore((s) => s.listings)
   const filteredListings = useFilteredListings()
   const colorMode = useActiveColorMode()
@@ -310,6 +343,7 @@ export function MapView({ children, onMapReady }: MapViewProps) {
 
     map.on('load', () => {
       ensureListingsLayer(map, latestListingsDataRef.current, !selectedStateRef.current)
+      applyListingsHighlight(map, hoveredListingIdRef.current)
       loadStatesData()
       setMapInstance(map)
     })
@@ -422,6 +456,7 @@ export function MapView({ children, onMapReady }: MapViewProps) {
     // source/layer — re-add both layer sets from whatever data we already have.
     map.on('style.load', () => {
       ensureListingsLayer(map, latestListingsDataRef.current, !selectedStateRef.current)
+      applyListingsHighlight(map, hoveredListingIdRef.current)
       if (statesDataRef.current) ensureStatesLayer(map, statesDataRef.current, !selectedStateRef.current)
       if (stateLabelsDataRef.current) ensureStateLabelsLayer(map, stateLabelsDataRef.current, !selectedStateRef.current)
     })
@@ -452,11 +487,19 @@ export function MapView({ children, onMapReady }: MapViewProps) {
     // other style is a URL, which is always async, so the race never showed up there).
     map.once('style.load', () => {
       ensureListingsLayer(map, latestListingsDataRef.current, !selectedStateRef.current)
+      applyListingsHighlight(map, hoveredListingIdRef.current)
       if (statesDataRef.current) ensureStatesLayer(map, statesDataRef.current, !selectedStateRef.current)
       if (stateLabelsDataRef.current) ensureStateLabelsLayer(map, stateLabelsDataRef.current, !selectedStateRef.current)
     })
     map.setStyle(getMapStyle(effectiveStyleId).style)
   }, [effectiveStyleId])
+
+  // Live-update the highlighted marker as the hovered row changes (no style reload involved).
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !mapInstance) return
+    applyListingsHighlight(map, hoveredListingId)
+  }, [mapInstance, hoveredListingId])
 
   // Keep the point layer's data in sync with the active filters + color mode.
   useEffect(() => {

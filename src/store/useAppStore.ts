@@ -83,6 +83,9 @@ interface AppState {
   clusters: Cluster[]
   activeClusterId: string | null
 
+  /** Listing currently hovered in the cluster listings table (map pane) — drives the matching map marker's highlight. Not persisted. */
+  hoveredListingId: string | null
+
   selectState: (stateName: string) => void
   clearSelectedState: () => void
   setIsNavigatingToLanding: (isNavigating: boolean) => void
@@ -114,6 +117,7 @@ interface AppState {
   removeClusters: (ids: string[]) => void
   removeAllClusters: () => void
   setActiveClusterId: (id: string | null) => void
+  setHoveredListingId: (id: string | null) => void
 
   /** Loads a state's saved clusters/settings row from state_projects. */
   hydrateStateProject: (row: StateProjectRow) => void
@@ -145,6 +149,7 @@ export const useAppStore = create<AppState>((set) => ({
 
   clusters: [],
   activeClusterId: null,
+  hoveredListingId: null,
 
   // Resets everything to defaults immediately on selection (not just once the real fetches
   // resolve) so a newly-picked state never briefly shows the previous state's data.
@@ -160,6 +165,7 @@ export const useAppStore = create<AppState>((set) => ({
       stateProjectSaveError: null,
       clusters: [],
       activeClusterId: null,
+      hoveredListingId: null,
       revenueThreshold: DEFAULT_REVENUE_THRESHOLD,
       colorModeId: defaultColorModeId,
       hiddenLegendEntries: {},
@@ -262,6 +268,7 @@ export const useAppStore = create<AppState>((set) => ({
     }),
   removeAllClusters: () => set({ clusters: [], activeClusterId: null }),
   setActiveClusterId: (id) => set({ activeClusterId: id }),
+  setHoveredListingId: (id) => set({ hoveredListingId: id }),
 
   hydrateStateProject: (row) =>
     set({

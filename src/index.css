@@ -547,7 +547,9 @@ button {
 
 .cluster-listings__scroll {
   margin-top: 8px;
+  max-height: 32vh;
   overflow-x: auto;
+  overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
@@ -843,6 +845,15 @@ button {
   top: 80px;
   right: 12px;
   max-width: 220px;
+}
+
+/* Spans the map pane's full width (offset past the sidebar, same as --top-left), anchored to
+   the bottom edge instead of a corner. Only ever renders while a state is selected (see
+   ClusterListingsTable/App.tsx), i.e. only while the sidebar itself is showing. */
+.map-overlay--bottom {
+  bottom: 12px;
+  left: 372px;
+  right: 12px;
 }
 
 .style-switcher {
