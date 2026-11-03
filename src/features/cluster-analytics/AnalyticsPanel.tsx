@@ -1,3 +1,4 @@
+import { ClusterListingsTable } from '@/features/cluster-analytics/ClusterListingsTable'
 import { ClusterNotes } from '@/features/cluster-analytics/ClusterNotes'
 import { ClusterStatTiles } from '@/features/cluster-analytics/ClusterStatTiles'
 import { ConfidencePicker } from '@/features/clusters/ConfidencePicker'
@@ -53,6 +54,8 @@ export function AnalyticsPanel() {
       ) : (
         chartDefinitions.map((chart) => <chart.Component key={chart.id} listings={listings} />)
       )}
+
+      <ClusterListingsTable listings={listings} />
     </div>
   )
 }
