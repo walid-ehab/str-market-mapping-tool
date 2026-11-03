@@ -1,25 +1,29 @@
 import { useState } from 'react'
 import { formatCurrency, formatPercent } from '@/lib/format'
-import type { EnrichedListing } from '@/types/listing'
+import { useActiveCluster, useClusterListings } from '@/store/selectors'
+import { useAppStore } from '@/store/useAppStore'
 
-/** Collapsible table of every listing currently shown for the active cluster, sorted by revenue potential (highest first). Hidden by default — toggled via "Show Listings". */
-export function ClusterListingsTable({ listings }: { listings: EnrichedListing[] }) {
+/** Collapsible table of every listing currently shown for the active cluster, sorted by revenue potential (highest first). Hidden by default — toggled via "Show Listings". Rendered as a map-pane overlay (see App.tsx), so it pulls its own cluster/listings rather than taking them as props. Hovering a row highlights that listing's marker on the map (see MapView's hoveredListingId handling). */
+export function ClusterListingsTable() {
   const [isOpen, setIsOpen] = useState(false)
+  const cluster = useActiveCluster()
+  const listings = useClusterListings(cluster)
+  const setHoveredListingId = useAppStore((s) => s.setHoveredListingId)
 
-  if (listings.length === 0) return null
+  if (!cluster || listings.length === 0) return null
 
   const sorted = [...listings].sort(
     (a, b) => (b.revenuePotentialLtm ?? -Infinity) - (a.revenuePotentialLtm ?? -Infinity),
   )
 
   return (
-    <div className="cluster-listings">
+    <div className="map-overlay map-overlay--bottom cluster-listings">
       <button type="button" className="cluster-listings__toggle" onClick={() => setIsOpen((open) => !open)}>
         {isOpen ? 'Hide' : 'Show'} Listings ({listings.length})
       </button>
 
       {isOpen && (
-        <div className="cluster-listings__scroll">
+        <div className="cluster-listings__scroll" onMouseLeave={() => setHoveredListingId(null)}>
           <table className="cluster-listings__table">
             <thead>
               <tr>
@@ -38,7 +42,7 @@ export function ClusterListingsTable({ listings }: { listings: EnrichedListing[]
             </thead>
             <tbody>
               {sorted.map((listing) => (
-                <tr key={listing.id}>
+                <tr key={listing.id} onMouseEnter={() => setHoveredListingId(listing.id)}>
                   <td>{listing.title}</td>
                   <td>{listing.bedrooms}</td>
                   <td>{listing.bathrooms}</td>

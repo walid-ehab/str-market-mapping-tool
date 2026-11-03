@@ -4,6 +4,7 @@ import { CollapsibleSection } from '@/components/CollapsibleSection'
 import { ClusterList } from '@/features/clusters/ClusterList'
 import { DeleteAllClustersButton } from '@/features/clusters/DeleteAllClustersButton'
 import { AnalyticsPanel } from '@/features/cluster-analytics/AnalyticsPanel'
+import { ClusterListingsTable } from '@/features/cluster-analytics/ClusterListingsTable'
 import { AutoDetectClusters } from '@/features/auto-cluster/AutoDetectClusters'
 import { ExportAllClustersButton } from '@/features/export/ExportButtons'
 import { FilterPanel } from '@/features/filters/FilterPanel'
@@ -148,6 +149,7 @@ function App() {
                 <StyleSwitcher />
                 <Legend />
                 <PolygonDraw />
+                <ClusterListingsTable />
               </>
             )}
           </MapView>
