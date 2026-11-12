@@ -285,6 +285,15 @@ button {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  /* Caps the list at 7 rows (7 × 32px row height + 6 × 4px gap) before it scrolls internally,
+     so a long list of clusters doesn't push the Generate Report button and the active
+     cluster's analytics far down the sidebar. flex-shrink: 0 keeps that cap reliable — without
+     it, .sidebar__section--grow's flex-basis: 0 (from its "flex: 1" shorthand) lets this list
+     get squeezed below its own max-height whenever the sidebar is short on room, instead of
+     the analytics content below it doing the shrinking/overflowing as it already did before. */
+  max-height: 248px;
+  overflow-y: auto;
+  flex-shrink: 0;
 }
 
 .cluster-list--empty {
